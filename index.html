@@ -1,32 +1,17 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-    <link type="text/css" rel="stylesheet" href="css/main.css"/>
-    <style type="text/css">
+<meta charset="utf-8">
+<style>
 
-circle.node {
-  cursor: pointer;
-  stroke: #000;
-  stroke-width: .5px;
+.link {
+  stroke: #ccc;
 }
 
-line.link {
-  fill: none;
-  stroke: #9ecae1;
-  stroke-width: 1.5px;
+.node text {
+  pointer-events: none;
+  font: 16px sans-serif;
 }
 
-    </style>
-  </head>
-  <body>
-    <h2>
-      Flare code size<br>
-      force-directed graph
-    </h2>
-    <script type="text/javascript" src="d3/d3.js"></script>
-    <script type="text/javascript" src="d3/d3.geom.js"></script>
-    <script type="text/javascript" src="d3/d3.layout.js"></script>
-    <script type="text/javascript" src="js/main.js"></script>
-  </body>
-</html>
+</style>
+<body>
+<script src="d3/d3.min.js"></script>
+<script src="js/main.js"></script></body>
