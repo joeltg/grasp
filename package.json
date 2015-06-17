@@ -1,0 +1,30 @@
+{
+  "name": "grasp",
+  "version": "0.0.1",
+  "description": "Graphical LISP",
+  "keywords": [
+    "LISP"
+  ],
+  "scripts": {
+    "start": "browserify .//js/main.js -t babelify --outfile ./js/main.min.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joeltg/grasp"
+  },
+  "author": "Joel <joelg@mit.edu>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/joeltg/grasp/issues"
+  },
+  "homepage": "https://github.com/joeltg/grasp",
+  "devDependencies": {
+    "babelify": "^6.1.2",
+    "browserify": "^10.2.4"
+  },
+  "dependencies": {
+    "react": "^0.13.3",
+    "react-select": "^0.4.9",
+    "d3": "^3.5.5"
+  }
+}
