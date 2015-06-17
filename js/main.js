@@ -1,371 +1,114 @@
-// set up SVG for D3
-var width  = 960,
-    height = 500,
-    colors = d3.scale.category10();
+var w = 1280,
+    h = 800,
+    node,
+    link,
+    root;
 
-var svg = d3.select('#content')
-  .append('svg')
-  .attr('width', width)
-  .attr('height', height);
-
-// set up initial nodes and links
-//  - nodes are known by 'id', not by index in array.
-//  - reflexive edges are indicated on the node (as a bold black circle).
-//  - links are always source < target; edge directions are set by 'left' and 'right'.
-var nodes = [
-    {id: 0, reflexive: false},
-    {id: 1, reflexive: true },
-    {id: 2, reflexive: false}
-  ],
-  lastNodeId = 2,
-  links = [
-    {source: nodes[0], target: nodes[1], left: false, right: true },
-    {source: nodes[1], target: nodes[2], left: false, right: true }
-  ];
-
-// init D3 force layout
 var force = d3.layout.force()
-    .nodes(nodes)
-    .links(links)
-    .size([width, height])
-    .linkDistance(150)
-    .charge(-500)
-    .on('tick', tick)
+    .on("tick", tick)
+    .charge(function(d) { return d._children ? -d.size / 100 : -30; })
+    .linkDistance(function(d) { return d.target._children ? 80 : 30; })
+    .size([w, h - 160]);
 
-// define arrow markers for graph links
-svg.append('svg:defs').append('svg:marker')
-    .attr('id', 'end-arrow')
-    .attr('viewBox', '0 -5 10 10')
-    .attr('refX', 6)
-    .attr('markerWidth', 3)
-    .attr('markerHeight', 3)
-    .attr('orient', 'auto')
-  .append('svg:path')
-    .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', '#000');
+var vis = d3.select("body").append("svg:svg")
+    .attr("width", w)
+    .attr("height", h);
 
-svg.append('svg:defs').append('svg:marker')
-    .attr('id', 'start-arrow')
-    .attr('viewBox', '0 -5 10 10')
-    .attr('refX', 4)
-    .attr('markerWidth', 3)
-    .attr('markerHeight', 3)
-    .attr('orient', 'auto')
-  .append('svg:path')
-    .attr('d', 'M10,-5L0,0L10,5')
-    .attr('fill', '#000');
+d3.json("flare.json", function(json) {
+  root = json;
+  root.fixed = true;
+  root.x = w / 2;
+  root.y = h / 2 - 80;
+  update();
+});
 
-// line displayed when dragging new nodes
-var drag_line = svg.append('svg:path')
-  .attr('class', 'link dragline hidden')
-  .attr('d', 'M0,0L0,0');
+function update() {
+  var nodes = flatten(root),
+      links = d3.layout.tree().links(nodes);
 
-// handles to link and node element groups
-var path = svg.append('svg:g').selectAll('path'),
-    circle = svg.append('svg:g').selectAll('g');
+  // Restart the force layout.
+  force
+      .nodes(nodes)
+      .links(links)
+      .start();
 
-// mouse event vars
-var selected_node = null,
-    selected_link = null,
-    mousedown_link = null,
-    mousedown_node = null,
-    mouseup_node = null;
+  // Update the links…
+  link = vis.selectAll("line.link")
+      .data(links, function(d) { return d.target.id; });
 
-function resetMouseVars() {
-  mousedown_node = null;
-  mouseup_node = null;
-  mousedown_link = null;
+  // Enter any new links.
+  link.enter().insert("svg:line", ".node")
+      .attr("class", "link")
+      .attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
+
+  // Exit any old links.
+  link.exit().remove();
+
+  // Update the nodes…
+  node = vis.selectAll("circle.node")
+      .data(nodes, function(d) { return d.id; })
+      .style("fill", color);
+
+  node.transition()
+      .attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(d.size) / 10; });
+
+  // Enter any new nodes.
+  node.enter().append("svg:circle")
+      .attr("class", "node")
+      .attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; })
+      .attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(d.size) / 10; })
+      .style("fill", color)
+      .on("click", click)
+      .call(force.drag);
+
+  // Exit any old nodes.
+  node.exit().remove();
 }
 
-// update force layout (called automatically each iteration)
 function tick() {
-  // draw directed edges with proper padding from node centers
-  path.attr('d', function(d) {
-    var deltaX = d.target.x - d.source.x,
-        deltaY = d.target.y - d.source.y,
-        dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
-        normX = deltaX / dist,
-        normY = deltaY / dist,
-        sourcePadding = d.left ? 17 : 12,
-        targetPadding = d.right ? 17 : 12,
-        sourceX = d.source.x + (sourcePadding * normX),
-        sourceY = d.source.y + (sourcePadding * normY),
-        targetX = d.target.x - (targetPadding * normX),
-        targetY = d.target.y - (targetPadding * normY);
-    return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
-  });
+  link.attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
 
-  circle.attr('transform', function(d) {
-    return 'translate(' + d.x + ',' + d.y + ')';
-  });
+  node.attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
 }
 
-// update graph (called when needed)
-function restart() {
-  // path (link) group
-  path = path.data(links);
-
-  // update existing links
-  path.classed('selected', function(d) { return d === selected_link; })
-    .style('marker-start', function(d) { return d.left ? 'url(#start-arrow)' : ''; })
-    .style('marker-end', function(d) { return d.right ? 'url(#end-arrow)' : ''; });
-
-
-  // add new links
-  path.enter().append('svg:path')
-    .attr('class', 'link')
-    .classed('selected', function(d) { return d === selected_link; })
-    .style('marker-start', function(d) { return d.left ? 'url(#start-arrow)' : ''; })
-    .style('marker-end', function(d) { return d.right ? 'url(#end-arrow)' : ''; })
-    .on('mousedown', function(d) {
-      if(d3.event.ctrlKey) return;
-
-      // select link
-      mousedown_link = d;
-      if(mousedown_link === selected_link) selected_link = null;
-      else selected_link = mousedown_link;
-      selected_node = null;
-      restart();
-    });
-
-  // remove old links
-  path.exit().remove();
-
-
-  // circle (node) group
-  // NB: the function arg is crucial here! nodes are known by id, not by index!
-  circle = circle.data(nodes, function(d) { return d.id; });
-
-  // update existing nodes (reflexive & selected visual states)
-  circle.selectAll('circle')
-    .style('fill', function(d) { return (d === selected_node) ? d3.rgb(colors(d.id)).brighter().toString() : colors(d.id); })
-    .classed('reflexive', function(d) { return d.reflexive; });
-
-  // add new nodes
-  var g = circle.enter().append('svg:g');
-
-  g.append('svg:circle')
-    .attr('class', 'node')
-    .attr('r', 12)
-    .style('fill', function(d) { return (d === selected_node) ? d3.rgb(colors(d.id)).brighter().toString() : colors(d.id); })
-    .style('stroke', function(d) { return d3.rgb(colors(d.id)).darker().toString(); })
-    .classed('reflexive', function(d) { return d.reflexive; })
-    .on('mouseover', function(d) {
-      if(!mousedown_node || d === mousedown_node) return;
-      // enlarge target node
-      d3.select(this).attr('transform', 'scale(1.1)');
-    })
-    .on('mouseout', function(d) {
-      if(!mousedown_node || d === mousedown_node) return;
-      // unenlarge target node
-      d3.select(this).attr('transform', '');
-    })
-    .on('mousedown', function(d) {
-      if(d3.event.ctrlKey) return;
-
-      // select node
-      mousedown_node = d;
-      if(mousedown_node === selected_node) selected_node = null;
-      else selected_node = mousedown_node;
-      selected_link = null;
-
-      // reposition drag line
-      drag_line
-        .style('marker-end', 'url(#end-arrow)')
-        .classed('hidden', false)
-        .attr('d', 'M' + mousedown_node.x + ',' + mousedown_node.y + 'L' + mousedown_node.x + ',' + mousedown_node.y);
-
-      restart();
-    })
-    .on('mouseup', function(d) {
-      if(!mousedown_node) return;
-
-      // needed by FF
-      drag_line
-        .classed('hidden', true)
-        .style('marker-end', '');
-
-      // check for drag-to-self
-      mouseup_node = d;
-      if(mouseup_node === mousedown_node) { resetMouseVars(); return; }
-
-      // unenlarge target node
-      d3.select(this).attr('transform', '');
-
-      // add link to graph (update if exists)
-      // NB: links are strictly source < target; arrows separately specified by booleans
-      var source, target, direction;
-      if(mousedown_node.id < mouseup_node.id) {
-        source = mousedown_node;
-        target = mouseup_node;
-        direction = 'right';
-      } else {
-        source = mouseup_node;
-        target = mousedown_node;
-        direction = 'left';
-      }
-
-      var link;
-      link = links.filter(function(l) {
-        return (l.source === source && l.target === target);
-      })[0];
-
-      if(link) {
-        link[direction] = true;
-      } else {
-        link = {source: source, target: target, left: false, right: false};
-        link[direction] = true;
-        links.push(link);
-      }
-
-      // select new link
-      selected_link = link;
-      selected_node = null;
-      restart();
-    });
-
-  // show node IDs
-  g.append('svg:text')
-      .attr('x', 0)
-      .attr('y', 4)
-      .attr('class', 'id')
-      .text(function(d) { return d.id; });
-
-  // remove old nodes
-  circle.exit().remove();
-
-  // set the graph in motion
-  force.start();
+// Color leaf nodes orange, and packages white or blue.
+function color(d) {
+  return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
 }
 
-function mousedown() {
-  // prevent I-bar on drag
-  //d3.event.preventDefault();
-  
-  // because :active only works in WebKit?
-  svg.classed('active', true);
-
-  if(d3.event.ctrlKey || mousedown_node || mousedown_link) return;
-
-  // insert new node at point
-  var point = d3.mouse(this),
-      node = {id: ++lastNodeId, reflexive: false};
-  node.x = point[0];
-  node.y = point[1];
-  nodes.push(node);
-
-  restart();
+// Toggle children on click.
+function click(d) {
+  if (d.children) {
+    d._children = d.children;
+    d.children = null;
+  } else {
+    d.children = d._children;
+    d._children = null;
+  }
+  update();
 }
 
-function mousemove() {
-  if(!mousedown_node) return;
+// Returns a list of all nodes under the root.
+function flatten(root) {
+  var nodes = [], i = 0;
 
-  // update drag line
-  drag_line.attr('d', 'M' + mousedown_node.x + ',' + mousedown_node.y + 'L' + d3.mouse(this)[0] + ',' + d3.mouse(this)[1]);
-
-  restart();
-}
-
-function mouseup() {
-  if(mousedown_node) {
-    // hide drag line
-    drag_line
-      .classed('hidden', true)
-      .style('marker-end', '');
+  function recurse(node) {
+    if (node.children) node.size = node.children.reduce(function(p, v) { return p + recurse(v); }, 0);
+    if (!node.id) node.id = ++i;
+    nodes.push(node);
+    return node.size;
   }
 
-  // because :active only works in WebKit?
-  svg.classed('active', false);
-
-  // clear mouse event vars
-  resetMouseVars();
+  root.size = recurse(root);
+  return nodes;
 }
 
-function spliceLinksForNode(node) {
-  var toSplice = links.filter(function(l) {
-    return (l.source === node || l.target === node);
-  });
-  toSplice.map(function(l) {
-    links.splice(links.indexOf(l), 1);
-  });
-}
-
-// only respond once per keydown
-var lastKeyDown = -1;
-
-function keydown() {
-  d3.event.preventDefault();
-
-  if(lastKeyDown !== -1) return;
-  lastKeyDown = d3.event.keyCode;
-
-  // ctrl
-  if(d3.event.keyCode === 17) {
-    circle.call(force.drag);
-    svg.classed('ctrl', true);
-  }
-
-  if(!selected_node && !selected_link) return;
-  switch(d3.event.keyCode) {
-    case 8: // backspace
-    case 46: // delete
-      if(selected_node) {
-        nodes.splice(nodes.indexOf(selected_node), 1);
-        spliceLinksForNode(selected_node);
-      } else if(selected_link) {
-        links.splice(links.indexOf(selected_link), 1);
-      }
-      selected_link = null;
-      selected_node = null;
-      restart();
-      break;
-    case 66: // B
-      if(selected_link) {
-        // set link direction to both left and right
-        selected_link.left = true;
-        selected_link.right = true;
-      }
-      restart();
-      break;
-    case 76: // L
-      if(selected_link) {
-        // set link direction to left only
-        selected_link.left = true;
-        selected_link.right = false;
-      }
-      restart();
-      break;
-    case 82: // R
-      if(selected_node) {
-        // toggle node reflexivity
-        selected_node.reflexive = !selected_node.reflexive;
-      } else if(selected_link) {
-        // set link direction to right only
-        selected_link.left = false;
-        selected_link.right = true;
-      }
-      restart();
-      break;
-  }
-}
-
-function keyup() {
-  lastKeyDown = -1;
-
-  // ctrl
-  if(d3.event.keyCode === 17) {
-    circle
-      .on('mousedown.drag', null)
-      .on('touchstart.drag', null);
-    svg.classed('ctrl', false);
-  }
-}
-
-// app starts here
-svg.on('mousedown', mousedown)
-  .on('mousemove', mousemove)
-  .on('mouseup', mouseup);
-d3.select(window)
-  .on('keydown', keydown)
-  .on('keyup', keyup);
-restart();
+    
