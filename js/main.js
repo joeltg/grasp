@@ -110,5 +110,3 @@ function flatten(root) {
   root.size = recurse(root);
   return nodes;
 }
-
-    
