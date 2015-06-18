@@ -96,6 +96,10 @@ function getJSON(code) {
     NODES = [];
     n = 0;
     code = code.replace("'(", "(quote ");
+    code = code.replace(/(\r\n|\n|\r)/gm," ");
+    while (code.indexOf("  ") > 0) code = code.replace("  ", " ");
+    code = code.replace("( ", "(");
+    code = code.replace(" )", ")");
     if (code.substring(0, 1) != "(" && code.substring(code.length - 2, code.length - 1) != ")") {
         code = "(" + code + ")";
     }
@@ -103,6 +107,7 @@ function getJSON(code) {
 }
 
 function parse(code) {
+    console.log(code);
     code = split(code);
     var name = code[0];
     code.splice(0, 1);
@@ -132,6 +137,7 @@ function parse(code) {
 }
 
 function makeNode(n, i) {
+    if (n === "") n = "NIL";
     var node = {name: n, id: i};
     NODES.push(node);
 }
