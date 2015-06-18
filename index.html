@@ -5,6 +5,11 @@
     <meta charset="utf-8">
     <style>
 
+        html {
+            height: 100%;
+            width: 100%;
+        }
+
         .link {
           stroke: #ccc;
         }
@@ -19,8 +24,8 @@
             right: 0;
             bottom: 0;
             left: 0;
-            width: 400px;
-            height: 500px;
+            width: 100%;
+            height: 100%;
         }
 
     </style>
@@ -28,14 +33,14 @@
 <body style="width: 100%; height: 100%; margin: 0px;">
     <table style="width: 100%; height: 100%; margin: 0px;">
         <tr>
-            <td>
-                <div id="graph" style="width: 400px; height: 500px; margin: 0px;"></div>
-            </td>
-            <td>
+            <td style="width: 500px;">
                 <div id="editor"></div>
             </td>
+            <td>
+                <div id="graph" style="width: 100%; height: 100%; margin: 0px;"></div>
+            </td>
         </tr>
-        <tr>
+        <tr style="height: 100px;">
             <td colspan="2">
                 <input type="button" value="Load" onclick="reload()">
             </td>

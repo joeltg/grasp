@@ -1,16 +1,17 @@
-var width = 400,
-    height = 500
+var NODES = [];
+var LINKS = [];
+var n = 0;
 
 var svg = d3.select("#graph").append("svg")
-    .attr("width", width)
-    .attr("height", height);
+    .attr("width", "100%")
+    .attr("height", "100%");
 
 var force = d3.layout.force()
-    .size([width, height])
+    .size([600, 600])
     .gravity(0.05)
     .linkDistance(100)
     .charge(-500)
-    .linkStrength(10);
+    .linkStrength(1);
 
 // define arrow markers for graph links
 svg.append("defs").selectAll("marker")
@@ -32,6 +33,7 @@ var data;
 
 d3.json("graph.json", function(error, json) {
   if (error) throw error;
+  console.log(json);
   update(json);
 });
 
@@ -82,8 +84,106 @@ function update(data) {
 
 function reload() {
     var text = editor.getValue();
-    console.log(text)
-    j = JSON.parse(text);
-    console.log(j);
-    update(j);
+    getJSON(text);
+    console.log(typeof NODES);
+    json = {"nodes": NODES, "links": LINKS};
+    console.log(json);
+    update(json);
 }
+
+function getJSON(code) {
+    LINKS = [];
+    NODES = [];
+    n = 0;
+    code = code.replace("'(", "(quote ");
+    if (code.substring(0, 1) != "(" && code.substring(code.length - 2, code.length - 1) != ")") {
+        code = "(" + code + ")";
+    }
+    parse(code, 0);
+}
+
+function parse(code) {
+    code = split(code);
+    var name = code[0];
+    code.splice(0, 1);
+    console.log("Name: " + name);
+    console.log(code);
+    var id = n;
+    makeNode(name, id);
+    var i;
+    for (i in code) {
+        arg = code[i];
+        console.log(arg);
+        n += 1;
+        makeLink(n, id);
+        console.log(arg.substring(0, 1));
+        if (arg.substring(0, 1) === "(" && arg.substring(arg.length - 1, arg.length) === ")") {
+            // Form
+            console.log("Form");
+            parse(arg, n);
+        }
+        else {
+            // Atom
+            console.log("Atom");
+            makeNode(arg, n);
+        }
+    }
+
+}
+
+function makeNode(n, i) {
+    var node = {name: n, id: i};
+    NODES.push(node);
+}
+
+function makeLink(s, t) {
+    var link = {source: s, target: t}
+    LINKS.push(link);
+}
+
+function split(code) {
+    var marker = "|";
+
+    while (code.indexOf(marker) > 0) {
+        marker += "|";
+    }
+    console.log("Marker: " + marker);
+    code = code.substring(1, code.length - 1);
+    code = code.split("");
+    var parens = 0;
+    var c;
+    for (var i in range(code.length)) {
+        c = code[i];
+        if (c == '(') parens += 1;
+        if (c == ')') parens -= 1;
+        if (c == ' ' && parens == 0) {
+            code[i] = marker;
+        }
+    }
+    code = code.join('');
+    code = code.split(marker);
+    return code;
+}
+
+function range(start, stop, step) {
+    if (typeof stop == 'undefined') {
+        // one param defined
+        stop = start;
+        start = 0;
+    }
+
+    if (typeof step == 'undefined') {
+        step = 1;
+    }
+
+    if ((step > 0 && start >= stop) || (step < 0 && start <= stop)) {
+        return [];
+    }
+
+    var result = [];
+    for (var i = start; step > 0 ? i < stop : i > stop; i += step) {
+        result.push(i);
+    }
+
+    return result;
+};
