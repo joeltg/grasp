@@ -42,7 +42,7 @@ var klayNoflo = (function () {
       } else if ("workerScript" in params) {
         workerScript = params.workerScript;
       } else {
-        workerScript = "./bower_components/klayjs/klay.js";
+        workerScript = "../../bower_components/klayjs/klay.js";
       }
       // Start the WebWorker
       worker = new Worker(workerScript);
