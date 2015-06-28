@@ -345,11 +345,14 @@
         this.props.ports.dirty = false;
       }
 
-      var label = this.props.label;
-      var sublabel = this.props.sublabel;
+      var label = this.props.sublabel;
+      var sublabel = this.props.label;
       if (!sublabel || sublabel === label) {
         sublabel = "";
       }
+
+      sublabel = "";
+
       var x = this.props.x;
       var y = this.props.y;
       var width = this.props.width;
