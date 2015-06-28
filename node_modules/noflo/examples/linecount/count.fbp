@@ -1,0 +1,11 @@
+# Read a file
+'package.json' -> IN Read(ReadFile)
+# Split the file contents by newlines
+Read() OUT -> IN Split(SplitStr)
+# Count the packets
+Split() OUT -> IN Count(Counter)
+# Send the total count to display
+Count() COUNT -> IN Display(Output)
+
+# Display also file read errors
+Read() ERROR -> IN Display()

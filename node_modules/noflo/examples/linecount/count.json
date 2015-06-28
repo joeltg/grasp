@@ -1,0 +1,92 @@
+{
+    "properties": {
+        "name": "Count lines in a file"
+    },
+    "processes": {
+        "ReadFile": {
+            "component": "ReadFile",
+            "metadata": {
+                "display": {
+                    "x": 91,
+                    "y": 154
+                }
+            }
+        },
+        "SplitbyLines": {
+            "component": "SplitStr",
+            "metadata": {
+                "display": {
+                    "x": 209,
+                    "y": 414
+                }
+            }
+        },
+        "CountLines": {
+            "component": "Counter",
+            "metadata": {
+                "display": {
+                    "x": 206,
+                    "y": 750
+                }
+            }
+        },
+        "Display": {
+            "component": "Output",
+            "metadata": {
+                "display": {
+                    "x": 71,
+                    "y": 1003
+                }
+            }
+        }
+    },
+    "connections": [
+        {
+            "src": {
+                "process": "ReadFile",
+                "port": "out"
+            },
+            "tgt": {
+                "process": "SplitbyLines",
+                "port": "in"
+            }
+        },
+        {
+            "src": {
+                "process": "ReadFile",
+                "port": "error"
+            },
+            "tgt": {
+                "process": "Display",
+                "port": "in"
+            }
+        },
+        {
+            "src": {
+                "process": "SplitbyLines",
+                "port": "out"
+            },
+            "tgt": {
+                "process": "CountLines",
+                "port": "in"
+            }
+        },
+        {
+            "src": {
+                "process": "CountLines",
+                "port": "count"
+            },
+            "tgt": {
+                "process": "Display",
+                "port": "in"
+            }
+        },
+        {
+            "data": "package.json",
+            "tgt": {
+                "process": "ReadFile",
+                "port": "in"
+            }
+        }
+    ]
+}
