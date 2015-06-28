@@ -1,16 +1,17 @@
 var NODES = {};
 var EDGES = [];
+var N = 0;
 var CONNECTIONS = {};
 
 function getJSON(code) {
-    n = 0;
+    N = 0;
     NODES = {};
     EDGES = [];
     CONNECTIONS = {};
 
     code = refactor(code);
 
-    code = parse(code, n);
+    code = parse(code);
     result = {"processes": NODES, "connections": EDGES};
     return result;
 }
@@ -19,20 +20,20 @@ function parse(code, n) {
     code = split(code);
     var name = code[0];
     code.splice(0, 1);
-    var id = n;
+    var id = N;
     makeNode(name, id);
     var i;
     for (i in code) {
         arg = code[i];
-        n += 1;
-        makeLink(n, id);
+        N += 1;
+        makeLink(N, id);
         if (arg.substring(0, 1) === "(" && arg.substring(arg.length - 1, arg.length) === ")") {
             // Form
-            parse(arg, n);
+            parse(arg, N);
         }
         else {
             // Atom
-            makeNode(arg, n);
+            makeNode(arg, N);
         }
     }
 }
