@@ -117,8 +117,7 @@
         window.loadGraph = function (json) {
           // Load graph
           var editor = document.getElementById('editor');
-          var graph = json.data ? JSON.parse(json.data.files['noflo.json'].content) : json;
-          console.log(json);
+          var graph = json;
           var graphString = JSON.stringify(graph);
           editor.graph = graph;
 
@@ -129,7 +128,6 @@
           // Refresh graph
           document.getElementById("refresh").addEventListener("click", function () {
             if (!editor.nofloGraph) { return; }
-            console.log(JSON.parse(graphString));
             //editor.graph = getJSON(codeEditor.getValue());
             //editor.graph = JSON.parse(graphString);
             loadGraph(getJSON(codeEditor.getValue()));

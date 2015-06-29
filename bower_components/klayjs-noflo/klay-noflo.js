@@ -44,7 +44,6 @@ var klayNoflo = (function () {
       } else {
         workerScript = "../bower_components/klayjs/klay.js";
       }
-      console.log(workerScript);
       workerScript = "./bower_components/klayjs/klay.js";
       // Start the WebWorker
       worker = new Worker(workerScript);

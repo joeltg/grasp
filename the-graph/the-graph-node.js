@@ -344,14 +344,9 @@
         // This tag is set when an edge or iip changes port colors
         this.props.ports.dirty = false;
       }
-
-      var label = this.props.sublabel;
-      var sublabel = this.props.label;
-      if (!sublabel || sublabel === label) {
-        sublabel = "";
-      }
-
-      sublabel = "";
+      //this.props.label, this.props.sublabel
+      var label = "";
+      var sublabel = "";
 
       var x = this.props.x;
       var y = this.props.y;
@@ -432,7 +427,7 @@
       if (!icon) {
         icon = TheGraph.FONT_AWESOME.cog;
       }
-
+      icon = this.props.sublabel;
       var iconContent;
       if (this.props.iconsvg && this.props.iconsvg !== "") {
           var iconSVGOptions = TheGraph.merge(TheGraph.config.node.iconsvg, {
