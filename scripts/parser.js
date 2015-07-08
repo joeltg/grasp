@@ -43,9 +43,9 @@ function makeNode(name, id) {
 }
 
 function makeLink(source, target) {
-    var i = 0;
+    var i = 1;
     if (CONNECTIONS[target]) i = CONNECTIONS[target];
-    else CONNECTIONS[target] = 0;
+    else CONNECTIONS[target] = 1;
     CONNECTIONS[target] += 1;
     EDGES.push({"src": {"process": String(source), "port": "output"}, "tgt": {"process": String(target), "port": String(i)}});
 }

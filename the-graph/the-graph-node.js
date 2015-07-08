@@ -502,7 +502,7 @@
         transform: "translate("+x+","+y+")"
       };
       nodeOptions = TheGraph.merge(TheGraph.config.node.container, nodeOptions);
-
+      console.log(nodeContents);
       return TheGraph.factories.node.createNodeGroup.call(this, nodeOptions, nodeContents);
     }
   }));
