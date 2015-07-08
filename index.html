@@ -59,6 +59,7 @@
             width: 400px;
             bottom: 0px;
             height: 50px;
+            background: #272822;
         }
         .controlButton {
             cursor: pointer;
@@ -66,6 +67,10 @@
             height: 100%;
             background: rgba(230,238,240,0.94);
             border-radius: 2px;
+            padding: 0px;
+            font-size: 16px;
+            color: #272822
+            text-font: "SourceCodePro";
         }
     </style>
 </head>
@@ -86,10 +91,14 @@
         <table style="width: 100%; height: 100%; border-collapse: collapse">
             <tr>
                 <td style="padding: 5px;">
-                    <div class="controlButton" style="" id="clear">clear</div>
+                    <div class="controlButton" style="" id="clear">
+                        <p style="margin: 0px; padding: 10px;">clear</p>
+                    </div>
                 </td>
                 <td style="padding: 5px;">
-                    <div class="controlButton" id="refresh">load</div>
+                    <div class="controlButton" id="refresh">
+                        <p style="margin: 0px; padding: 10px;">load</p>
+                    </div>
                 </td>
             </tr>
         </table>
