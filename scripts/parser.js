@@ -39,7 +39,13 @@ function parse(code, n) {
 }
 
 function makeNode(name, id) {
-    NODES[id] = {"component": name};
+    NODES[id] = {
+        "component": name,
+        "metadata": {
+            "x": 500,
+            "y": 200
+        }
+    };
 }
 
 function makeLink(source, target) {
