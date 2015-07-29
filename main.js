@@ -2,14 +2,14 @@ var graph = new joint.dia.Graph;
 var link = joint.shapes.devs.Link;
 var paper = new joint.dia.Paper({
     el: $('#graph'),
-    gridSize: 1,
+    gridSize: 10,
     model: graph,
     width: "100%",
     height: "100%",
-    defaultLink: new joint.shapes.devs.Link,
-    /*defaultLink: new joint.dia.Link({
+    //defaultLink: new joint.shapes.devs.Link,
+    defaultLink: new joint.dia.Link({
         attrs: { '.marker-target': { d: 'M 10 0 L 0 5 L 10 10 z' } }
-    }),*/
+    }),
     validateConnection: function(cellViewS, magnetS, cellViewT, magnetT, end, linkView) {
         // Prevent linking from input ports.
         if (magnetS && magnetS.getAttribute('type') === 'input') return false;

@@ -20,16 +20,23 @@ var Content = React.createClass({displayName: 'Content',
     countParens: function(text) {
         var c = 0;
         var q = true
+        var splits = [];
         for (var i = 0; i < text.length; i++) {
             if (text[i] == '"') q = !q;
-            else if (text[i] == '(' && q) c += 1;
-            else if (text[i] == ')' && q) c -= 1;
+            else if (text[i] == '(' && q) {
+                c += 1;
+                if (c == 1) splits.push([i]);
+            }
+            else if (text[i] == ')' && q) {
+                c -= 1;
+                if (c == 0 && splits.length > 0) splits[splits.length - 1].push(i + 1);
+            }
         }
-        return c;
+        return [c, splits];
     },
     handleCodeChange: function(text) {
         var parens = this.countParens(text);
-        if (parens == 0 && text.length > 0) this.props.load(text);
+        if (parens[0] == 0 && text.length > 0) this.props.load(text.trim(), parens[1]);
     },
     render: function() {
         return (
