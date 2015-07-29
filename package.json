@@ -1,35 +1,32 @@
 {
-  "name": "grasp",
+  "name": "module_manager",
   "version": "0.1.0",
-  "description": "Graphical Lisp",
-  "main": "the-graph-editor/index.html",
-  "dependencies": {
-    "noflo": "^0.5.9"
-  },
-  "devDependencies": {
-    "stylus": "~0.49.0",
-    "grunt": "~0.4.1",
-    "grunt-exec": "~0.4.2",
-    "grunt-contrib-jshint": "~0.10.0",
-    "grunt-lint-inline": "~0.4.3",
-    "grunt-contrib-watch": "~0.6.1",
-    "grunt-contrib-connect": "~0.8.0",
-    "grunt-browserify": "~3.0.0",
-    "grunt-bower-install-simple": "^1.0.2",
-    "coffeeify": "^0.7.0",
-    "glob": "^4.3.1"
-  },
+  "description": "A app to manage re-running modules on the super-glue project",
   "scripts": {
-    "test": "grunt test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/joeltg/grasp.git"
+    "start": "browserify ./static/jsx/main.js -t babelify --outfile ./static/js/main.js"
   },
   "keywords": [
-    "graph",
-    "lisp"
+    "glue",
+    "super-glue"
   ],
-  "author": "joeltg",
-  "license": "MIT"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Viral-MediaLab/one_word_snippets"
+  },
+  "author": "Joel <joelg@mit.edu>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Viral-MediaLab/one_word_snippets/issues"
+  },
+  "devDependencies": {
+    "babelify": "^6.1.2",
+    "browserify": "^10.2.4"
+  },
+  "dependencies": {
+    "react": "^0.13.3",
+    "material-ui": "^0.10.0",
+    "react-tap-event-plugin": "^0.1.7",
+    "react-ace": "^2.0.2",
+    "brace": "^0.5.1"
+  }
 }

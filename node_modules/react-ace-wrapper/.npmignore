@@ -1,0 +1,6 @@
+# ignore git
+.git/
+.gitignore
+
+# ignore coverage report
+coverage/

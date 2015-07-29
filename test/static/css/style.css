@@ -1,0 +1,36 @@
+html,body {
+    margin: 0px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+.paper {
+    width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 16px;
+}
+.contentBox {
+    width: 100%;
+    height: 100%;
+}
+.runButton {
+    position: relative;
+    float: right;
+}
+.scopeCheck {
+    font-size: 14px;
+    margin-left: 16px;
+    max-width: 200px;
+    min-width: 200px;
+}
+.moduleMenu {
+    margin-left: -8px;
+}
+.idText {
+    margin-left: 16px;
+    max-width: 200px;
+}
+.table {
+    width: 100%;
+}
