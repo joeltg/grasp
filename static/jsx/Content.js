@@ -7,6 +7,23 @@ require('brace/theme/monokai');
 var ThemeManager = new Material.Styles.ThemeManager();
 var injectTapEventPlugin = require("react-tap-event-plugin");
 injectTapEventPlugin();
+let CustomTheme = {
+    getPalette() {
+        return {
+            primary1Color: 'rgb(46, 204, 113)',
+        };
+    },
+    getComponentThemes(palette) {
+        return {
+            appBar: {
+                color: palette.primary1Color,
+                textColor: 'rgb(0, 0, 0)',
+                height: 64
+            }
+        }
+    }
+};
+ThemeManager.setTheme(CustomTheme);
 var Content = React.createClass({displayName: 'Content',
     mixins: [React.addons.LinkedStateMixin],
     getChildContext() {
