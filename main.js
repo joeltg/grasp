@@ -24,7 +24,6 @@ var paper = new joint.dia.Paper({
                     link.get('target').port === magnetT.getAttribute('port'));
         });
         return !portUsed;
-        return true;
     },
     // Enable marking available cells & magnets
     markAvailable: true,

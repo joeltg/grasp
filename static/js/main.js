@@ -57464,6 +57464,7 @@ var Content = React.createClass({ displayName: 'Content',
                             name: 'editor',
                             height: '100%',
                             width: '100%',
+                            value: 'Replace this with LISP code!',
                             onChange: this.handleCodeChange })
                     ),
                     React.createElement(
