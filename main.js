@@ -32,7 +32,7 @@ function init() {
     controls.staticMoving = true;
     camera.position.z = 100;
     plane = new THREE.Mesh(
-        new THREE.PlaneBufferGeometry( 500, 500, 8, 8 ),
+        new THREE.PlaneBufferGeometry( 1000, 1000, 8, 8 ),
         new THREE.MeshBasicMaterial( { visible: false } )
     );
     scene.add( plane );
@@ -69,12 +69,13 @@ function onWindowResize() {
 
 function addForm(args, position, name, outputs) {
     if (!outputs) outputs = ['out'];
+    console.log(outputs);
     var argsScale = 20;
     var padding = 10;
     var textMesh = makeText(name, true);
     var nameWidth = textMesh.geometry.boundingBox.max.x - textMesh.geometry.boundingBox.min.x;
     var argWidth = args.length * argsScale;
-    var height = textMesh.geometry.boundingBox.max.y - textMesh.geometry.boundingBox.min.y;
+    var height = 10;
     var extrudeMesh = makeFrame(Math.max(nameWidth, argWidth) + padding, height + padding);
     var form = compose([extrudeMesh, textMesh]);
     form.position.set(position[0], position[1], position[2]);
@@ -87,18 +88,18 @@ function addForm(args, position, name, outputs) {
         THREE.SceneUtils.attach(input, scene, form);
         input.position.set(20 * (i - (args.length / 2)), 10, 5);
     }
+
     var addInput = new THREE.Mesh(sgeometry, rectangleMaterial);
     scene.add(addInput);
     THREE.SceneUtils.attach(addInput, scene, form);
     addInput.position.set(20 * (args.length / 2), 10, 5);
-    for (var j = 0; i < outputs.length; i++) {
+
+    for (var j = 0; j < outputs.length; j++) {
         var sphere = new THREE.Mesh(sgeometry, rectangleMaterial);
         scene.add(sphere);
         THREE.SceneUtils.attach(sphere, scene, form);
-        console.log(outputs.length / 2.0);
         sphere.position.set(20 * (j - ((outputs.length - 1) / 2.0)), -10, 5);
     }
-
     scene.add(form);
     objects.push(form);
     return form;
@@ -135,8 +136,7 @@ function distance(v1, v2) {
     return Math.sqrt(dx*dx+dy*dy+dz*dz);
 }
 
-
-function addFancyLink(startNode, endNode) {
+function addLink(startNode, endNode) {
     var start = startNode.position, end = endNode.position;
     var dir = new THREE.Vector3().subVectors(end, start).normalize();
     var origin = start;
@@ -162,27 +162,32 @@ function compose(meshes) {
 
 init();
 
-var cube = addForm([4, 2, 1], [60, 60, 0], "hi");
-var cube2 = addForm([4, 2, 1], [0, 0, 0], "two");
-var cube3 = addForm([], [-60, -60, 0], "three");
-var cube4 = addForm([4, 2, 1], [-120, -120, 0], "four");
-var cube5 = addForm([4, 2, 1], [120, 120, 0], "five");
+var cube = addForm([4, 2, 1], [30, 60, 0], "one");
+var cube2 = addForm([4, 2], [0, 0, 0], "add");
+var cube3 = addForm([0], [-60, -60, 0], "print");
+var cube5 = addForm([4, 2, 1], [-60, 60, 0], "three");
 
-var link = addFancyLink(cube2, cube3);
-console.log(link);
+var link = addLink(getOutputPort(cube2), cube3.children[0]);
+var link2 = addLink(getOutputPort(cube), cube2.children[1]);
+var link3 = addLink(getOutputPort(cube5), cube2.children[0]);
+
+function getOutputPort(form) {
+    return form.children[form.children.length - 1];
+}
 
 function updateLinks() {
     var direction, origin, length, start, end;
 
     for (var i = 0; i < links.length ; i++) {
         start = links[i].startNode.position;
-        end = links[i].endNode.position;
+        start = new THREE.Vector3().addVectors(links[i].startNode.position, links[i].startNode.parent.position);
+        end = new THREE.Vector3().addVectors(links[i].endNode.position, links[i].endNode.parent.position);
 
         origin = start;
         direction = new THREE.Vector3().subVectors(end, start).normalize();
         length = distance(start, end);
 
-        links[i].position.set(origin);
+        links[i].position.set(origin.x, origin.y, origin.z);
         links[i].setDirection(direction);
         links[i].setLength(length);
     }
@@ -285,6 +290,5 @@ function onDocumentMouseUp( event ) {
     container.style.cursor = 'auto';
 
 }
-
 
 render();
