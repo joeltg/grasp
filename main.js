@@ -69,7 +69,6 @@ function onWindowResize() {
 
 function addForm(args, position, name, outputs) {
     if (!outputs) outputs = ['out'];
-    console.log(outputs);
     var argsScale = 20;
     var padding = 10;
     var textMesh = makeText(name, true);
@@ -150,6 +149,35 @@ function addLink(startNode, endNode) {
     return arrowHelper;
 }
 
+var getCurve = THREE.Curve.create(
+    function ( length ) { //custom curve constructor
+        //this.scale = (length === undefined) ? 1 : length;
+    },
+    function ( t ) { //getPoint: t is between 0-1
+        return new THREE.Vector3(0, t, 0); //.multiplyScalar(this.scale);
+    }
+);
+
+function addFancyLink(startNode, endNode) {
+    var start = new THREE.Vector3().addVectors(startNode.position, startNode.parent.position);
+    var end = new THREE.Vector3().addVectors(endNode.position, endNode.parent.position);
+    var dir = new THREE.Vector3().subVectors(end, start).normalize();
+    var length = distance(end, start);
+
+    var path = new getCurve(length);
+    var tubeGeometry = new THREE.TubeGeometry(path, 8, 2, 8, true);
+    var link = new THREE.Mesh(tubeGeometry, rectangleMaterial);
+    link.position.set(start.x, start.y, start.z);
+    console.log(link.up);
+    link.rotation.z = link.up.angleTo(dir);
+    link.startNode = startNode;
+    link.endNode = endNode;
+    scene.add(link);
+    links.push(link);
+    console.log(link);
+    return link;
+}
+
 function compose(meshes) {
     var geometry = new THREE.Geometry();
     var materials = [];
@@ -162,23 +190,24 @@ function compose(meshes) {
 
 init();
 
-var cube = addForm([4, 2, 1], [30, 60, 0], "one");
-var cube2 = addForm([4, 2], [0, 0, 0], "add");
-var cube3 = addForm([0], [-60, -60, 0], "print");
-var cube5 = addForm([4, 2, 1], [-60, 60, 0], "three");
+var cube = addForm([], [30, 60, 0], "one");
+var cube2 = addForm([0, 1], [0, 0, 0], "add");
+var cube3 = addForm([0], [-60, -90, 0], "print");
+var cube5 = addForm([], [-60, 60, 0], "three");
 
-var link = addLink(getOutputPort(cube2), cube3.children[0]);
-var link2 = addLink(getOutputPort(cube), cube2.children[1]);
-var link3 = addLink(getOutputPort(cube5), cube2.children[0]);
+var link = addFancyLink(getOutputPort(cube2), cube3.children[0]);
+var link2 = addFancyLink(getOutputPort(cube), cube2.children[1]);
+var link3 = addFancyLink(getOutputPort(cube5), cube2.children[0]);
 
 function getOutputPort(form) {
     return form.children[form.children.length - 1];
 }
 
 function updateLinks() {
-    var direction, origin, length, start, end;
+    var direction, length, start, end;
 
     for (var i = 0; i < links.length ; i++) {
+        /*
         start = links[i].startNode.position;
         start = new THREE.Vector3().addVectors(links[i].startNode.position, links[i].startNode.parent.position);
         end = new THREE.Vector3().addVectors(links[i].endNode.position, links[i].endNode.parent.position);
@@ -190,8 +219,17 @@ function updateLinks() {
         links[i].position.set(origin.x, origin.y, origin.z);
         links[i].setDirection(direction);
         links[i].setLength(length);
+        */
+        start = new THREE.Vector3().addVectors(links[i].startNode.position, links[i].startNode.parent.position);
+        end = new THREE.Vector3().addVectors(links[i].endNode.position, links[i].endNode.parent.position);
+        direction = new THREE.Vector3().subVectors(end, start);
+        length = distance(start, end);
+        links[i].position.set(start.x, start.y, start.z);
+        links[i].rotation.z = 0;
+        //console.log(links[i].scale);
+        links[i].scale.set(1, length, 1);
+        links[i].rotation.z = ((start.x > end.x) ? 1 : -1) * links[i].up.angleTo(direction);
     }
-
 }
 
 function render() {
