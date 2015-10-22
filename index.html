@@ -8,7 +8,14 @@
     <link href="style.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
 <body>
+    <div id="editor"></div>
     <div id="content"></div>
+    <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script>
+        var editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+        editor.getSession().setMode("ace/mode/lisp");
+    </script>
     <script src="three/three.min.js"></script>
     <script src="three/TrackballControls.js"></script>
     <script src="three/droid_sans_regular.typeface.js"></script>
