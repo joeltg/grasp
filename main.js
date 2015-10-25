@@ -1,135 +1,190 @@
 var scene, renderer, camera, rectangleMaterial, textMaterial;
 var container, stats;
 var controls;
-var objects = [], links = [], plane;
+var objects = [], links = [], plane, edges = [], nodes = [];
 var parens;
+var ARG_PADDING = 20;
+var ARG_ELEVATION = 1;
+var FRAME_PADDING = 10;
 
 var raycaster = new THREE.Raycaster();
-var mouse = new THREE.Vector2(),
-    offset = new THREE.Vector3(),
-    INTERSECTED, SELECTED;
+var mouse = new THREE.Vector2();
+var offset = new THREE.Vector3();
+var INTERSECTED, SELECTED;
 
+var materials = {
+    frame: new THREE.MeshPhongMaterial( { color: 0x119955, shading: THREE.FlatShading } ),
+    text:  new THREE.MeshPhongMaterial( { color: 0xffffff, shading: THREE.FlatShading } ),
+    input: new THREE.MeshPhongMaterial( {color: 0xffffff, shading: THREE.FlatShading} ),
+    output: new THREE.MeshPhongMaterial( {color: 0x119955, shading: THREE.FlatShading} )
+};
 
-function init() {
-    scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2( 0xcccccc, 0.001 );
-    renderer = new THREE.WebGLRenderer();
-    renderer.setClearColor( scene.fog.color );
-    renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setSize( window.innerWidth, window.innerHeight );
-    renderer.sortObjects = false;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
+var geometries = {
+    text: function(name) {
+        var g = new THREE.TextGeometry(name, {font: "droid sans", height: 6, size: 10, style: "normal"});
+        g.computeBoundingBox();
+        g.width = g.boundingBox.max.x - g.boundingBox.min.x;
+        g.height = g.boundingBox.max.y - g.boundingBox.min.y;
+        g.applyMatrix( new THREE.Matrix4().makeTranslation(- g.width / 2.0, - g.height / 2.0, 0));
+        g.dynamic = true;
+        g.verticesNeedUpdate = true;
+        return g;
+    },
+    frame: function(w, h) {
+        var points = [];
+        points.push(new THREE.Vector2(- 0.5 * w, - 0.5 * h));
+        points.push(new THREE.Vector2(- 0.5 * w, 0.5 * h));
+        points.push(new THREE.Vector2(0.5 * w, 0.5 * h));
+        points.push(new THREE.Vector2(0.5 * w, - 0.5 * h));
+        var shape = new THREE.Shape(points);
+        var settings = {amount: 5, bevelEnabled: false, steps: 1};
+        var g = new THREE.ExtrudeGeometry(shape, settings);
+        g.width = w;
+        g.height = h;
+        return g;
+    },
+    input: new THREE.SphereGeometry(5),
+    output: new THREE.SphereGeometry(5),
+    edge: function() {
+        var getCurve = THREE.Curve.create(
+            function () {},
+            function (t) {return new THREE.Vector3(0, t, 0);}
+        );
+        return new THREE.TubeGeometry(new getCurve(), 8, 2, 8, true);
+    }
+};
 
-    renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
-    renderer.domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
-    renderer.domElement.addEventListener( 'mouseup', onDocumentMouseUp, false );
+function Node(name, numArgs) {
+    this.name = name;
+    this.numArgs = numArgs;
+    var args = [];
+    this.args = args;
 
-    container = document.getElementById('content');
-    container.appendChild( renderer.domElement );
-    camera = new THREE.PerspectiveCamera( 60, (window.innerWidth) / window.innerHeight, 1, 10000 );
-    controls = new THREE.TrackballControls( camera );
-    controls.noZoom = false;
-    controls.noPan = false;
-    controls.staticMoving = true;
-    camera.position.z = 100;
-    plane = new THREE.Mesh(
-        new THREE.PlaneBufferGeometry( 1000, 1000, 8, 8 ),
-        new THREE.MeshBasicMaterial( { visible: false } )
-    );
-    scene.add( plane );
-    window.addEventListener('resize', onWindowResize, false);
-    light();
-    materials();
-}
+    // make text
+    if (name) {
+        var textGeometry = geometries.text(name);
+        var text = new THREE.Mesh(textGeometry, materials.text);
+        this.text = text;
+        scene.add(text);
+    }
 
-function materials() {
-    rectangleMaterial = new THREE.MeshPhongMaterial( { color: 0x119955, shading: THREE.FlatShading } );
-    textMaterial = new THREE.MeshPhongMaterial( { color: 0xffffff, shading: THREE.FlatShading } );
-}
-function light() {
-    dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
-    dirLight.position.set( 0.2, 0.2, 1 );
-    dirLight.castShadow = true;
-    dirLight.shadowMapWidth = 2048;
-    dirLight.shadowMapHeight = 2048;
-    var d = 50;
-    dirLight.shadowCameraLeft = -d;
-    dirLight.shadowCameraRight = d;
-    dirLight.shadowCameraTop = d;
-    dirLight.shadowCameraBottom = -d;
-    dirLight.shadowCameraFar = 3500;
-    dirLight.shadowBias = -0.0001;
-    dirLight.shadowDarkness = 1;
-    scene.add( dirLight );
-}
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize( window.innerWidth, window.innerHeight );
-}
+    // make frame
+    var argWidth = numArgs * ARG_PADDING;
+    var frameWidth = Math.max(textGeometry.width, argWidth) + FRAME_PADDING;
+    var frameHeight = 10 + FRAME_PADDING;
+    this.width = frameWidth;
+    this.height = frameHeight;
 
-function addForm(numArgs, position, name, outputs) {
-    if (!outputs) outputs = ['out'];
-    var argsScale = 20;
-    var padding = 10;
-    var textMesh = makeText(name, true);
-    var nameWidth = textMesh.geometry.boundingBox.max.x - textMesh.geometry.boundingBox.min.x;
-    var argWidth = numArgs * argsScale;
-    var height = 10;
-    var extrudeMesh = makeFrame(Math.max(nameWidth, argWidth) + padding, height + padding);
-    var form = compose([extrudeMesh, textMesh]);
-    form.position.set(position[0], position[1], position[2]);
-    var sgeometry = new THREE.SphereGeometry( 5 );
-    var smaterial = new THREE.MeshPhongMaterial( {color: 0xffffff, shading: THREE.FlatShading} );
-    var input;
+    var frameGeometry = geometries.frame(frameWidth, frameHeight);
+    var frame = new THREE.Mesh(frameGeometry, materials.frame);
+    this.frame = frame;
+    scene.add(frame);
+
+    THREE.SceneUtils.attach(text, scene, frame);
+    objects.push(frame);
+
+    // inputs
     for (var i = 0; i < numArgs; i++) {
-        input = new THREE.Mesh( sgeometry, smaterial );
+        var input = new THREE.Mesh(geometries.input, materials.input);
         scene.add(input);
-        THREE.SceneUtils.attach(input, scene, form);
-        input.position.set(20 * (i - (numArgs / 2)), 10, 5);
+        THREE.SceneUtils.attach(input, scene, this.frame);
+        input.position.set(ARG_PADDING * (i - (numArgs / 2.0)), frameHeight / 2.0, ARG_ELEVATION);
+        args.push(input);
     }
 
-    if (numArgs != -1) {
-        var addInput = new THREE.Mesh(sgeometry, rectangleMaterial);
-        scene.add(addInput);
-        THREE.SceneUtils.attach(addInput, scene, form);
-        addInput.position.set(20 * (numArgs / 2), 10, 5);
-    }
+    // add input
+    var addInput = new THREE.Mesh(geometries.output, materials.output);
+    scene.add(addInput);
+    THREE.SceneUtils.attach(addInput, scene, frame);
+    addInput.position.set(ARG_PADDING * (numArgs / 2.0), frameHeight / 2.0, ARG_ELEVATION);
+    this.addInput = addInput;
 
-    for (var j = 0; j < outputs.length; j++) {
-        var sphere = new THREE.Mesh(sgeometry, rectangleMaterial);
-        scene.add(sphere);
-        THREE.SceneUtils.attach(sphere, scene, form);
-        sphere.position.set(20 * (j - ((outputs.length - 1) / 2.0)), -10, 5);
-    }
-    scene.add(form);
-    objects.push(form);
-    return form;
+    // output
+    var output = new THREE.Mesh(geometries.output, materials.output);
+    scene.add(output);
+    THREE.SceneUtils.attach(output, scene, frame);
+    output.position.set(0, -frameHeight / 2.0, ARG_ELEVATION);
+    this.output = output;
+    this.position = frame.position;
 
+    this.setName = function(name) {
+        var text = new THREE.Mesh(geometries.text(name), materials.text);
+        THREE.SceneUtils.detach(this.text, this.frame, scene);
+        this.text.geometry.dispose();
+        scene.remove(this.text);
+        scene.add(text);
+        this.text = text;
+        THREE.SceneUtils.attach(text, scene, this.frame);
+        if (text.geometry.width > this.args * ARG_PADDING) this.resizeFrame();
+    };
+    this.addArg = function(index) {
+        if (!index) index = this.numArgs;
+        this.numArgs += 1;
+        var input = new THREE.Mesh(geometries.input, materials.input);
+        scene.add(input);
+        this.args.splice(index, 0, input);
+        THREE.SceneUtils.attach(input, scene, this.frame);
+        for (var i = 0; i < this.numArgs; i++)
+            this.args[i].position.set(ARG_PADDING * (i - (this.numArgs / 2.0)), frameHeight / 2.0, ARG_ELEVATION);
+        this.addInput.position.set(ARG_PADDING * (this.numArgs / 2.0), frameHeight / 2.0, ARG_ELEVATION);
+        // resize frame if necessary
+        if (this.width < (ARG_PADDING * this.numArgs) + FRAME_PADDING) this.resizeFrame();
+    };
+    this.removeArg = function(index) {
+        if (!index) index = this.numArgs - 1;
+        this.numArgs -= 1;
+        var input = this.args[index];
+        scene.remove(input);
+        this.args.splice(index, 1);
+        THREE.SceneUtils.detach(input, this.frame, scene);
+        input.geometry.dispose();
+        scene.remove(input);
+        for (var i = 0; i < this.numArgs; i++)
+            this.args[i].position.set(ARG_PADDING * (i - (this.numArgs / 2.0)), frameHeight / 2.0, ARG_ELEVATION);
+        this.addInput.position.set(ARG_PADDING * (this.numArgs / 2.0), frameHeight / 2.0, ARG_ELEVATION);
+        // resize frame if necessary
+        if (this.width < ARG_PADDING * this.args) this.resizeFrame();
+    };
+    this.resizeFrame  = function() {
+        var argWidth = this.numArgs * ARG_PADDING;
+        var frameWidth = Math.max(this.text.geometry.width, argWidth) + FRAME_PADDING;
+        var frameHeight = 10 + FRAME_PADDING;
+        this.width = frameWidth;
+        this.height = frameHeight;
+        for (var i = 0; i < this.frame.geometry.vertices.length; i++) {
+            var vertex = this.frame.geometry.vertices[i];
+            vertex.x = (vertex.x < 0 ? -1 : 1) * frameWidth / 2.0;
+            vertex.y = (vertex.y < 0 ? -1 : 1) * frameHeight / 2.0;
+        }
+        this.frame.geometry.verticesNeedUpdate = true;
+    };
+    this.setPosition = function(x, y, z) {
+        this.position = new THREE.Vector3(x, y, z);
+        this.frame.position.set(this.position);
+    };
+    nodes.push(this);
 }
 
-function makeText(text, shift) {
-    var textGeometry = new THREE.TextGeometry(text, {font: "droid sans", height: 10, size: 10, style: "normal"});
-    if (shift) {
-        textGeometry.computeBoundingBox();
-        width = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
-        height = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y;
-        textGeometry.applyMatrix( new THREE.Matrix4().makeTranslation(- width / 2.0, - height / 2.0, 0));
-    }
-    return new THREE.Mesh(textGeometry, textMaterial);
-}
-
-function makeFrame(width, height) {
-    var points = [];
-    points.push(new THREE.Vector2(- width / 2.0, - height / 2.0));
-    points.push(new THREE.Vector2(- width / 2.0, height / 2.0));
-    points.push(new THREE.Vector2(width / 2.0, height / 2.0));
-    points.push(new THREE.Vector2(width / 2.0, - height / 2.0));
-    var extrudeShape = new THREE.Shape(points);
-    var extrudeSettings = { amount: 8, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 1, bevelThickness: 1 };
-    var extrudeGeometry = new THREE.ExtrudeGeometry(extrudeShape, extrudeSettings);
-    return new THREE.Mesh(extrudeGeometry, rectangleMaterial);
+function Edge(startNode, endNode) {
+    this.startNode = startNode;
+    this.endNode = endNode;
+    var tube = new THREE.Mesh(geometries.edge(), materials.frame);
+    this.tube = tube;
+    this.update = function() {
+        var start = new THREE.Vector3().addVectors(startNode.position, startNode.parent.position);
+        var end = new THREE.Vector3().addVectors(endNode.position, endNode.parent.position);
+        var direction = new THREE.Vector3().subVectors(end, start);
+        var length = distance(start, end);
+        this.tube.position.set(start.x, start.y, start.z);
+        this.tube.rotation.z = 0;
+        this.tube.scale.set(1, length * 1.15, 1);
+        this.tube.rotation.z = ((start.x > end.x) ? 1 : -1) * this.tube.up.angleTo(direction);
+    };
+    this.update();
+    scene.add(tube);
+    startNode.link = this;
+    endNode.link = this;
+    links.push(this);
 }
 
 function distance(v1, v2) {
@@ -139,70 +194,9 @@ function distance(v1, v2) {
     return Math.sqrt(dx*dx+dy*dy+dz*dz);
 }
 
-var getCurve = THREE.Curve.create(
-    function ( ) { },
-    function ( t ) { return new THREE.Vector3(0, t, 0);  }
-);
-
-function addLink(startNode, endNode) {
-
-    var path = new getCurve(length);
-    var tubeGeometry = new THREE.TubeGeometry(path, 8, 2, 8, true);
-    var link = new THREE.Mesh(tubeGeometry, rectangleMaterial);
-    link.startNode = startNode;
-    link.endNode = endNode;
-    updateLink(link);
-    scene.add(link);
-    links.push(link);
-    return link;
-}
-
-function compose(meshes) {
-    var geometry = new THREE.Geometry();
-    var materials = [];
-    for (var i = 0; i < meshes.length; i++) {
-        materials.push(meshes[i].material);
-        geometry.merge(meshes[i].geometry, meshes[i].matrix, i);
-    }
-    return new THREE.Mesh(geometry, new THREE.MeshFaceMaterial(materials));
-}
-
-init();
-/*
-var cube1 = addForm(0, [30, 60, 0], "one");
-var cube2 = addForm(2, [0, 0, 0], "add");
-var cube3 = addForm(1, [-60, -90, 0], "print");
-var cube5 = addForm(0, [-60, 60, 0], "three");
-
-var link1 = addLink(getOutputPort(cube2), cube3.children[0]);
-var link2 = addLink(getOutputPort(cube1), cube2.children[1]);
-var link3 = addLink(getOutputPort(cube5), cube2.children[0]);
-*/
-function getOutputPort(form) {
-    return form.children[form.children.length - 1];
-}
-
-function updateLinks() {
-
-    for (var i = 0; i < links.length ; i++) {
-        updateLink(links[i]);
-    }
-}
-
-function updateLink(link) {
-    var start = new THREE.Vector3().addVectors(link.startNode.position, link.startNode.parent.position);
-    var end = new THREE.Vector3().addVectors(link.endNode.position, link.endNode.parent.position);
-    var direction = new THREE.Vector3().subVectors(end, start);
-    var length = distance(start, end);
-    link.position.set(start.x, start.y, start.z);
-    link.rotation.z = 0;
-    link.scale.set(1, length * 1.15, 1);
-    link.rotation.z = ((start.x > end.x) ? 1 : -1) * link.up.angleTo(direction);
-}
-
 function render() {
     requestAnimationFrame( render );
-    updateLinks();
+    //updateLinks();
     controls.update();
     renderer.render(scene, camera);
 }
@@ -257,22 +251,20 @@ function load(text, splits) {
 
 function clear() {
     for (var i = 0; i < objects.length; i++) {
+        objects[i].geometry.dispose();
         scene.remove(objects[i]);
     }
+    objects.length = 0;
     for (var j = 0; j < links.length; j++) {
-        scene.remove(links[j]);
+        links[j].tube.geometry.dispose();
+        scene.remove(links[j].tube);
     }
-    plane = new THREE.Mesh(
-        new THREE.PlaneBufferGeometry( 1000, 1000, 8, 8 ),
-        new THREE.MeshBasicMaterial( { visible: false } )
-    );
-    scene.add( plane );
-    renderer.render(scene, camera);
+    links.length = 0;
 }
 
 function countParens(text) {
     var c = 0;
-    var q = true
+    var q = true;
     var splits = [];
     for (var i = 0; i < text.length; i++) {
         if (text[i] == '"') q = !q;
@@ -291,123 +283,146 @@ function countParens(text) {
 editor.getSession().on('change', function(e) {
     var text = editor.getValue();
     var newParens = countParens(text);
-    console.log(newParens);
     if (!parens) parens = [];
     if (!(parens.toString() == newParens.toString())) {
         parens = newParens;
         if (parens[0] == 0 && text.length > 0) load(text.trim(), parens[1]);
-    };
+    }
 });
 
 function makeNode(args) {
-    console.log(args);
     if (typeof args == "string") {args = parse(sanitize(args)); }
 
-    var node = addForm(args.length - 1, [0, 0, 0], args[0]);
+    var node = new Node(args[0], args.length - 1);
 
     var arg, link;
     for (var i = 1; i < args.length; i++) {
         arg = args[i];
         if (typeof arg == "object" && arg.constructor === Array) {
             arg = makeNode(arg);
-            link = addLink(getOutputPort(arg), node.children[i - 1]);
+            link = new Edge(arg.output, node.args[i - 1]);
         }
         else {
-            arg = addForm(-1, [0, 0, 0], arg);
-            link = addLink(getOutputPort(arg), node.children[i - 1]);
+            arg = new Node(arg, 0);
+            link = new Edge(arg.output, node.args[i - 1]);
         }
     }
     return node;
 }
 
 function onDocumentMouseMove( event ) {
-
     event.preventDefault();
-
     mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-    //
-
     raycaster.setFromCamera( mouse, camera );
-
+    var intersects;
     if ( SELECTED ) {
-
-        var intersects = raycaster.intersectObject( plane );
-
-        if ( intersects.length > 0 ) {
-
+        intersects = raycaster.intersectObject( plane );
+        if ( intersects.length > 0 )
             SELECTED.position.copy( intersects[ 0 ].point.sub( offset ) );
-
-        }
-
+        for (var i = 0; i < SELECTED.children.length; i++)
+            if (SELECTED.children[i].link)
+                SELECTED.children[i].link.update();
         return;
-
     }
-
-    var intersects = raycaster.intersectObjects( objects );
-
+    intersects = raycaster.intersectObjects( objects );
     if ( intersects.length > 0 ) {
-
         if ( INTERSECTED != intersects[ 0 ].object ) {
             INTERSECTED = intersects[ 0 ].object;
             plane.position.copy( INTERSECTED.position );
         }
-
         container.style.cursor = 'pointer';
-
     } else {
         INTERSECTED = null;
         container.style.cursor = 'auto';
-
     }
 
 }
 
 function onDocumentMouseDown( event ) {
-
     event.preventDefault();
-
     raycaster.setFromCamera( mouse, camera );
-
     var intersects = raycaster.intersectObjects( objects );
-
     if ( intersects.length > 0 ) {
-
         controls.enabled = false;
-
         SELECTED = intersects[ 0 ].object;
-
-        var intersects = raycaster.intersectObject( plane );
-
+        intersects = raycaster.intersectObject( plane );
         if ( intersects.length > 0 ) {
-
             offset.copy( intersects[ 0 ].point ).sub( plane.position );
-
         }
-
         container.style.cursor = 'move';
-
     }
-
 }
 
 function onDocumentMouseUp( event ) {
-
     event.preventDefault();
-
     controls.enabled = true;
-
     if ( INTERSECTED ) {
-
         plane.position.copy( INTERSECTED.position );
-
         SELECTED = null;
-
     }
-
     container.style.cursor = 'auto';
-
 }
 
+function init() {
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2( 0xcccccc, 0.001 );
+    renderer = new THREE.WebGLRenderer();
+    renderer.setClearColor( scene.fog.color );
+    renderer.setPixelRatio( window.innerWidth / window.innerHeight );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.sortObjects = false;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+
+    renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
+    renderer.domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
+    renderer.domElement.addEventListener( 'mouseup', onDocumentMouseUp, false );
+
+    container = document.getElementById('content');
+    container.appendChild( renderer.domElement );
+    camera = new THREE.PerspectiveCamera( 60, (window.innerWidth) / window.innerHeight, 1, 10000 );
+    controls = new THREE.TrackballControls( camera );
+    controls.noZoom = false;
+    controls.noPan = false;
+    controls.staticMoving = true;
+    camera.position.z = 100;
+    plane = new THREE.Mesh(
+        new THREE.PlaneBufferGeometry( 1000, 1000, 8, 8 ),
+        new THREE.MeshBasicMaterial( { visible: false } )
+    );
+    scene.add( plane );
+    window.addEventListener('resize', onWindowResize, false);
+    light();
+}
+
+function light() {
+    var dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
+    dirLight.position.set( 0.2, 0.2, 1 );
+    dirLight.castShadow = true;
+    dirLight.shadowMapWidth = 2048;
+    dirLight.shadowMapHeight = 2048;
+    var d = 50;
+    dirLight.shadowCameraLeft = -d;
+    dirLight.shadowCameraRight = d;
+    dirLight.shadowCameraTop = d;
+    dirLight.shadowCameraBottom = -d;
+    dirLight.shadowCameraFar = 3500;
+    dirLight.shadowBias = -0.0001;
+    dirLight.shadowDarkness = 1;
+    scene.add( dirLight );
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+init();
+
 render();
+
+var n = new Node("name", 4);
+var s = new Node("hi", 2);
+var e = new Edge(n.output, s.args[0]);
