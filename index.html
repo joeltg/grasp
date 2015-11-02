@@ -3,20 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <link href="style.css" media="screen, projection" rel="stylesheet" type="text/css" />
 </head>
+<style type="text/css">
+    html, body {
+        margin: 0;
+    }
+    #control {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 400px;
+        height: 25px;
+    }
+    #editor {
+        position: absolute;
+        top: 25px;
+        bottom: 0;
+        left: 0;
+        width: 400px;
+    }
+    #content {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 400px;
+        height: 100%;
+    }
+</style>
 <body>
-    <div id="editor"></div>
-    <div id="content"></div>
-    <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
-    <script>
-        var editor = ace.edit("editor");
-        editor.setTheme("ace/theme/monokai");
-        editor.getSession().setMode("ace/mode/lisp");
-    </script>
-    <script src="three/three.min.js"></script>
-    <script src="three/TrackballControls.js"></script>
-    <script src="three/droid_sans_regular.typeface.js"></script>
-    <script src="main.js"></script>
+<div id="control">
+    <input type="button" id="center" value="center"/>
+    <input type="button" id="clear" value="clear"/>
+    <input type="button" id="layout" value="layout"/>
+</div>
+<div id="editor"></div>
+<script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
+<script>
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/monokai");
+    editor.getSession().setMode("ace/mode/lisp");
+</script>
+<div id="content"></div>
+<script src="three/three.min.js"></script>
+<script src="three/TrackballControls.js"></script>
+<script src="three/droid_sans_regular.typeface.js"></script>
+<script src="main.js"></script>
 </body>
 </html>

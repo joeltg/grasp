@@ -7,6 +7,8 @@ var NODE_HEIGHT = 20, NODE_WIDTH = 10, NODE_PADDING = 10, INPUT_PADDING = 20, IN
 var SCOPE_COLOR = '#ffffff', NODE_COLOR = '#119955', EDGE_COLOR = '#119955', TEXT_COLOR = '#ffffff';
 var OUTPUT_COLOR = '#119955', INPUT_COLOR = '#ffffff', ADD_INPUT_COLOR = '#119955', HIGHLIGHT_COLOR = '#ffff00';
 var EDITOR_WIDTH = 400;
+var SCOPE_ELEVATION_PADDING = 50;
+var PARENS;
 
 var materials = {
     scope: function() {return new THREE.MeshBasicMaterial({color: SCOPE_COLOR, visible: true, transparent: true, opacity: 0.5});},
@@ -18,7 +20,11 @@ var materials = {
     output: function() {return new THREE.MeshPhongMaterial({color: OUTPUT_COLOR, shading: THREE.FlatShading, transparent: true, opacity: 1})}
 };
 var geometries = {
-    scope: function() {return new THREE.PlaneBufferGeometry(100, 100, 1, 1)},
+    scope: function() {
+        var g = new THREE.PlaneGeometry(100, 100, 1, 1);
+        g.dynamic = true;
+        return g;
+    },
     node: function(w, h) {
         var points = [];
         points.push(new THREE.Vector2(- 0.5 * w, - 0.5 * h));
@@ -52,7 +58,7 @@ var geometries = {
     output: function() {return new THREE.SphereGeometry(5)}
 };
 
-function Scope() {
+function Scope(level) {
     this.addNode = function(node) {
         this.nodes.push(node);
         this.mesh.add(node.mesh);
@@ -64,18 +70,36 @@ function Scope() {
     this.remove = function() {
         var index = OBJECTS.indexOf(this.mesh);
         if (index > -1) OBJECTS.splice(index, 1);
-        else console.error("Could not remove Scope.mesh from OBJECTS");
+        index = SCOPES.indexOf(this.mesh);
+        if (index > -1) SCOPES.splice(index, 1);
+        else console.error("Could not remove Scope.mesh from SCOPES");
         for (var i = 0; i < this.nodes.length; i++) {
             this.nodes[i].remove();
         }
         removeMesh(this.mesh);
     };
+    this.setSize = function(width, height) {
+        this.width = width;
+        this.height = height;
+        var g = this.mesh.geometry;
+        g.vertices[0].set(-width / 2.0, -height / 2.0, 0);
+        g.vertices[1].set(-width / 2.0, height / 2.0, 0);
+        g.vertices[2].set(width / 2.0, -height / 2.0, 0);
+        g.vertices[3].set(width / 2.0, height / 2.0, 0);
+        g.verticesNeedUpdate = true;
+    };
     this.type = 'scope';
+    this.level = level;
     this.nodes = [];
     this.edges = [];
     this.mesh = new THREE.Mesh(geometries.scope(), materials.scope());
+    this.mesh.position.set(0, 0, level * SCOPE_ELEVATION_PADDING);
+    this.width = 1000;
+    this.height = 1000;
+    this.setSize(this.width, this.height);
     this.mesh.object = this;
     OBJECTS.push(this.mesh);
+    SCOPES.push(this.mesh);
     return this;
 }
 
@@ -212,6 +236,15 @@ function Edge(start, end) {
     };
     this.start = start;
     this.end = end;
+    if (start.type == 'output') {
+        this.output = start;
+        this.input = end;
+    }
+    else {
+        this.output = end;
+        this.input = start;
+    }
+
     start.edge = this;
     end.edge = this;
     this.type = 'edge';
@@ -237,7 +270,7 @@ function init() {
     CONTAINER = document.getElementById('content');
     CONTAINER.appendChild(RENDERER.domElement);
     CAMERA = new THREE.PerspectiveCamera(60, (window.innerWidth - EDITOR_WIDTH) / window.innerHeight, 1, 10000);
-    CAMERA.position.z = 100;
+    CAMERA.position.z = 500;
     CONTROLS = new THREE.TrackballControls(CAMERA);
     CONTROLS.noZoom = false;
     CONTROLS.noPan = false;
@@ -250,6 +283,7 @@ function init() {
         }, false);
     document.getElementById('center').addEventListener('click', center, false);
     document.getElementById('clear').addEventListener('click', clear, false);
+    document.getElementById('layout').addEventListener('click', layout, false);
     RENDERER.domElement.addEventListener("touchstart", onTouchStart, false);
     RENDERER.domElement.addEventListener("touchend", onTouchEnd, false);
     RENDERER.domElement.addEventListener("touchcancel", onTouchCancel, false);
@@ -276,18 +310,71 @@ function init() {
     SCENE.add(light);
 }
 
-function clear(event) {
-    console.log('clearing');
+function treeify(node) {
+    var inputs = node.inputs;
+    var input_trees = [];
+    for (var i = 0; i < inputs.length; i++) {
+        var parent_node = inputs[i].edge.output.parent.object;
+        input_trees.push(treeify(parent_node));
+    }
+    return [node, input_trees];
+}
+
+function layout() {
+    for (var i = 0; i < SCOPES.length; i++) {
+        var scope = SCOPES[i].object;
+        var nodes = scope.nodes.slice();
+        var bases = [];
+        var sorted = [];
+        for (var j = 0; j < nodes.length; j++) if (!nodes[j].output.edge) bases.push(nodes[j]);
+        for (var k = 0; k < bases.length; k++) sorted.push(treeify(bases[k]));
+        var layers = [];
+        while (sorted.length > 0) {
+            var layer = [];
+            var new_sorted = [];
+            for (var l = 0; l < sorted.length; l++) {
+                layer.push(sorted[l][0]);
+                for (var a = 0; a < sorted[l][1].length; a++) new_sorted.push(sorted[l][1][a]);
+            }
+            sorted = new_sorted;
+            layers.push(layer);
+        }
+
+        var x_padding = 80;
+        var y_padding = 50;
+
+        var width = 100;
+        var height = layers.length * y_padding;
+        for (var b = 0; b < layers.length; b++)
+            if (layers[b].length * x_padding > width)
+                width = layers[b].length * x_padding;
+        //scope.setSize(width, 2 * height);
+
+        for (var m = 0; m < layers.length; m++) {
+            if (layers[m].length * x_padding > width) {
+                width = layers[m].length * x_padding;
+                scope.setSize(width, height);
+            }
+            for (var n = 0; n < layers[m].length; n++) {
+                var node = layers[m][n];
+                node.setPosition(x_padding * (n - (layers[m].length / 2.0)), y_padding * (m), scope.level * SCOPE_ELEVATION_PADDING);
+                if (node.output.edge) node.output.edge.update();
+            }
+        }
+    }
+}
+
+function clear() {
     while (NODES.length > 0)
         NODES[0].object.remove();
     while (EDGES.length > 0)
         EDGES[0].object.remove();
-    while (OBJECTS.length > 0)
-        OBJECTS[0].object.remove();
+    //while (OBJECTS.length > 0)
+        //OBJECTS[0].object.remove();
 }
 
-function center(event) {
-    CAMERA.position.set(0, 0, 100);
+function center() {
+    CAMERA.position.set(0, 0, 500);
     CAMERA.up = new THREE.Vector3(0,1,0);
     CAMERA.lookAt(new THREE.Vector3(0,0,0));
     CONTROLS.target.set(0, 0, 0);
@@ -310,6 +397,106 @@ function distance(v1, v2) {
     var dy = v1.y - v2.y;
     var dz = v1.z - v2.z;
     return Math.sqrt(dx*dx+dy*dy+dz*dz);
+}
+
+function parse(code) {
+    // (function arg1 arg2 (function2 etc etc) arg4)
+    var marker = "|";
+    while (code.indexOf(marker) >= 0)
+        marker += "|";
+    marker = ' ' + marker + ' ';
+    if (code.substring(0, 1) == '(' && code.substring(code.length - 1, code.length) == ')')
+        code = code.substring(1, code.length - 1);
+    else return code;
+    code = code.split('');
+    var parens = 0;
+    var quote = false;
+    for (var i = 0; i < code.length; i++) {
+        if (code[i] == '(') parens++;
+        else if (code[i] == ')') parens--;
+        else if (code[i] == '"') quote = !quote;
+        else if (code[i] == ' ' && parens == 0 && !quote)
+            code[i] = marker;
+    }
+    code = code.join('');
+    code = code.split(marker);
+    for (var j = 0; j < code.length; j++)
+        code[j] = parse(code[j]);
+    return code;
+}
+
+function sanitize(text) {
+    var t = text.replace(/\n(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)/, " ");
+    while (t != text) { t = text.replace(/\n(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)/, " "); }
+    t = text.replace(/\s\s(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)/, " ");
+    while (t != text) { text = t.replace(/\s\s(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)/, " "); }
+    t = text.replace(/\s\s(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)/, " ");
+    while (t != text) { text = text.replace(/\(\s(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)/, "("); }
+    t = text = text.replace(/\s\)(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)/, ")");
+    while (t != text) { text = text.replace(/\s\)(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$)/, ")"); }
+    return text;
+}
+
+function load(text, splits) {
+    clear();
+    if (text.indexOf('(') < 0 && text.indexOf(')') < 0) text = '(' + text + ')';
+    var code;
+    for (var i = 0; i < splits.length; i++) {
+        code = text.substring(splits[i][0], splits[i][1]);
+        makeNode(code);
+    }
+    layout();
+}
+
+function countParens(text) {
+    var c = 0;
+    var q = true;
+    var splits = [];
+    for (var i = 0; i < text.length; i++) {
+        if (text[i] == '"') q = !q;
+        else if (text[i] == '(' && q) {
+            c += 1;
+            if (c == 1) splits.push([i]);
+        }
+        else if (text[i] == ')' && q) {
+            c -= 1;
+            if (c == 0 && splits.length > 0) splits[splits.length - 1].push(i + 1);
+        }
+    }
+    return [c, splits];
+}
+
+editor.getSession().on('change', function() {
+    var text = editor.getValue();
+    var newParens = countParens(text);
+    if (!PARENS) PARENS = [];
+    if (!(PARENS.toString() == newParens.toString())) {
+        PARENS = newParens;
+        if (PARENS[0] == 0 && text.length > 0) load(text.trim(), PARENS[1]);
+    }
+});
+
+function makeNode(args) {
+    if (typeof args == "string")
+        args = parse(sanitize(args));
+    var node = new Node(args[0]);
+    SCOPES[0].object.addNode(node);
+    var arg, link;
+    for (var i = 1; i < args.length; i++) {
+        arg = args[i];
+        if (typeof arg == "object" && arg.constructor === Array) {
+            arg = makeNode(arg);
+            link = new Edge(arg.output, node.addInput());
+            SCOPES[0].object.addEdge(link);
+        }
+        else {
+            arg = new Node(arg);
+            SCOPES[0].object.addNode(arg);
+            link = new Edge(arg.output, node.addInput());
+            SCOPES[0].object.addEdge(link);
+        }
+    }
+    return node;
 }
 
 function render() {
@@ -442,7 +629,13 @@ function onMouseUp(event) {
         if (intersects.length > 0) {
             var endpoint = intersects[0].object;
             if (endpoint.edge) endpoint.edge.remove();
-            if (endpoint.type == 'addInput') endpoint = endpoint.parent.object.addInput();
+            if (endpoint == SELECTED_OBJECT) return;
+            if (endpoint.type == 'addInput') {
+                endpoint = endpoint.parent.object.addInput();
+                DRAG_EDGE.input = endpoint;
+            }
+            if (endpoint.type == 'input') DRAG_EDGE.input = endpoint;
+            if (endpoint.type == 'output') DRAG_EDGE.output = endpoint;
             DRAG_EDGE.end = endpoint;
             endpoint.edge = DRAG_EDGE;
             DRAG_EDGE.update();
@@ -480,7 +673,7 @@ init();
 
 render();
 
-var s = new Scope();
+var s = new Scope(0);
 
 var n = new Node("name");
 var n2 = new Node("name2");
@@ -489,5 +682,7 @@ s.addNode(n);
 s.addNode(n2);
 s.addNode(n3);
 SCENE.add(s.mesh);
-n2.setPosition(0, 20, 0);
-n.setPosition(0, -20, 0);
+//n2.setPosition(0, 20, 0);
+//n.setPosition(0, -20, 0);
+
+layout();
