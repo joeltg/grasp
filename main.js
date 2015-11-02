@@ -674,15 +674,4 @@ init();
 render();
 
 var s = new Scope(0);
-
-var n = new Node("name");
-var n2 = new Node("name2");
-var n3 = new Node('name3');
-s.addNode(n);
-s.addNode(n2);
-s.addNode(n3);
 SCENE.add(s.mesh);
-//n2.setPosition(0, 20, 0);
-//n.setPosition(0, -20, 0);
-
-layout();
