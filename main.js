@@ -1,16 +1,17 @@
 var scene, renderer, camera, rectangleMaterial, textMaterial;
 var container, stats;
 var controls, plane;
-var OBJECTS = [], EDGES = [], ARGS = [];
+var OBJECTS = [], NODES = [], EDGES = [], ARGS = [], OUTPUTS = [];
 var parens;
 var ARG_PADDING = 20;
 var ARG_ELEVATION = 1;
 var FRAME_PADDING = 10;
+var EDITOR_WIDTH = 400;
 
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
 var offset = new THREE.Vector3();
-var INTERSECTED, SELECTED, DRAG_SOURCE, DRAG_TARGET, DRAG_EDGE;
+var INTERSECTED, SELECTED, DRAG_SOURCE, DRAG_TARGET, DRAG_EDGE, DRAG_TYPE;
 
 var materials = {
     frame: new THREE.MeshPhongMaterial( { color: 0x119955, shading: THREE.FlatShading } ),
@@ -107,6 +108,7 @@ function Node(name, numArgs) {
     var output = new THREE.Mesh(geometries.output, materials.output);
     scene.add(output);
     ARGS.push(output);
+    OUTPUTS.push(output);
     THREE.SceneUtils.attach(output, scene, frame);
     output.position.set(0, -frameHeight / 2.0, ARG_ELEVATION);
     this.output = output;
@@ -127,6 +129,7 @@ function Node(name, numArgs) {
         this.numArgs += 1;
         var input = new THREE.Mesh(geometries.input, materials.input);
         scene.add(input);
+        ARGS.push(input);
         this.args.splice(index, 0, input);
         THREE.SceneUtils.attach(input, scene, this.frame);
         for (var i = 0; i < this.numArgs; i++)
@@ -141,6 +144,8 @@ function Node(name, numArgs) {
         var input = this.args[index];
         scene.remove(input);
         this.args.splice(index, 1);
+        if (ARGS.indexOf(this.args[index]) > -1) ARGS.splice(ARGS.indexOf(this.args[index]), 1);
+        else console.log("ARG DOES NOT EXIST");
         THREE.SceneUtils.detach(input, this.frame, scene);
         input.geometry.dispose();
         scene.remove(input);
@@ -167,6 +172,14 @@ function Node(name, numArgs) {
         this.position = new THREE.Vector3(x, y, z);
         this.frame.position.set(this.position);
     };
+    this.remove = function() {
+        for (var i = 0; i < this.args.length; i++) this.removeArg(i);
+        this.frame.geometry.dispose();
+        scene.remove(this.frame);
+        console.log(NODES.indexOf(this));
+        NODES.splice(NODES.indexOf(this), 1);
+    };
+    NODES.push(this);
 }
 
 function Edge(startNode, endNode) {
@@ -189,6 +202,7 @@ function Edge(startNode, endNode) {
     this.remove = function() {
         this.tube.geometry.dispose();
         scene.remove(this.tube);
+        EDGES.splice(EDGES.indexOf(this), 1);
     };
 
     this.update();
@@ -259,17 +273,22 @@ function load(text, splits) {
     }
 }
 
+function remove(object) {
+    console.log("REMOVING");
+    while (object.children.length > 0) remove(object.children[0]);
+    THREE.SceneUtils.detach(object, object.parent, scene);
+    object.geometry.dispose();
+    scene.remove(object);
+}
+
 function clear() {
-    for (var i = 0; i < OBJECTS.length; i++) {
-        OBJECTS[i].geometry.dispose();
-        scene.remove(OBJECTS[i]);
-    }
-    OBJECTS.length = 0;
-    for (var j = 0; j < EDGES.length; j++) {
-        EDGES[j].tube.geometry.dispose();
-        scene.remove(EDGES[j].tube);
-    }
-    EDGES.length = 0;
+    for (var i = 0; i < OBJECTS.length; i++) remove(OBJECTS[i]);
+    for (i = 0; i < EDGES.length; i++) remove(EDGES[i].tube);
+    OBJECTS = [];
+    EDGES = [];
+    ARGS = [];
+    OUTPUTS = [];
+    console.log(scene);
 }
 
 function countParens(text) {
@@ -320,7 +339,7 @@ function makeNode(args) {
 
 function onDocumentMouseMove(event) {
     event.preventDefault();
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.x = ((event.clientX - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
     var intersects;
@@ -346,6 +365,20 @@ function onDocumentMouseMove(event) {
         return;
     }
     intersects = raycaster.intersectObjects(ARGS);
+    if (intersects.length > 0) {
+        if (INTERSECTED != intersects[0].object) {
+            INTERSECTED = intersects[0].object;
+            if (DRAG_SOURCE) {
+                DRAG_TARGET.position.copy(intersects[0].object.position);
+                DRAG_TARGET.position.add(intersects[0].object.parent.position);
+                DRAG_EDGE.update();
+            }
+            plane.position.copy(INTERSECTED.position);
+        }
+        container.style.cursor = 'pointer';
+        return;
+    }
+    intersects = raycaster.intersectObjects(OUTPUTS);
     if (intersects.length > 0) {
         if (INTERSECTED != intersects[0].object) {
             INTERSECTED = intersects[0].object;
@@ -390,6 +423,21 @@ function onDocumentMouseDown(event) {
         }
         DRAG_TARGET = {position: intersects[0].point, parent: {position: new THREE.Vector3(0, 0, 0)}};
         DRAG_EDGE = new Edge(DRAG_SOURCE, DRAG_TARGET);
+        DRAG_TYPE = 'arg';
+        container.style.cursor = 'move';
+        return;
+    }
+    intersects = raycaster.intersectObjects(OUTPUTS);
+    if (intersects.length > 0) {
+        controls.enabled = false;
+        DRAG_SOURCE = intersects[0].object;
+        if (DRAG_SOURCE.link) {
+            DRAG_SOURCE.link.remove();
+            DRAG_SOURCE.link = null;
+        }
+        DRAG_TARGET = {position: intersects[0].point, parent: {position: new THREE.Vector3(0, 0, 0)}};
+        DRAG_EDGE = new Edge(DRAG_SOURCE, DRAG_TARGET);
+        DRAG_TYPE = 'output';
         container.style.cursor = 'move';
     }
 }
@@ -405,9 +453,14 @@ function onDocumentMouseUp(event) {
     if (DRAG_EDGE) {
         DRAG_EDGE.remove();
         raycaster.setFromCamera(mouse, camera);
-        var intersects = raycaster.intersectObjects(ARGS);
-        if (intersects.length > 0) {
-            var edge = new Edge(DRAG_SOURCE, intersects[0].object);
+        var intersects;
+        if (DRAG_TYPE == 'arg') {
+            intersects = raycaster.intersectObjects(ARGS);
+            if (intersects.length > 0) new Edge(DRAG_SOURCE, intersects[0].object);
+        }
+        if (DRAG_TYPE == 'output') {
+            intersects = raycaster.intersectObjects(OUTPUTS);
+            if (intersects.length > 0) new Edge(DRAG_SOURCE, intersects[0].object);
         }
     }
     DRAG_SOURCE = null;
@@ -420,20 +473,21 @@ function init() {
     scene.fog = new THREE.FogExp2(0xcccccc, 0.001);
     renderer = new THREE.WebGLRenderer();
     renderer.setClearColor(scene.fog.color);
-    renderer.setPixelRatio(window.innerWidth / window.innerHeight);
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio((window.innerWidth - EDITOR_WIDTH) / window.innerHeight);
+    renderer.setSize((window.innerWidth - EDITOR_WIDTH), window.innerHeight);
     renderer.sortObjects = false;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     container = document.getElementById('content');
     container.appendChild(renderer.domElement);
-    camera = new THREE.PerspectiveCamera(60, (window.innerWidth) / window.innerHeight, 1, 10000);
+    camera = new THREE.PerspectiveCamera(60, (window.innerWidth - EDITOR_WIDTH) / window.innerHeight, 1, 10000);
     controls = new THREE.TrackballControls(camera);
     controls.noZoom = false;
     controls.noPan = false;
     controls.staticMoving = true;
     camera.position.z = 100;
+
     plane = new THREE.Mesh(
         new THREE.PlaneBufferGeometry(1000, 1000, 8, 8),
         new THREE.MeshBasicMaterial({visible: false})
@@ -443,9 +497,9 @@ function init() {
     // mouse and resize listeners
     window.addEventListener('resize',
         function () {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.aspect = (window.innerWidth - EDITOR_WIDTH) / window.innerHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize((window.innerWidth - EDITOR_WIDTH), window.innerHeight);
         },
         false);
     renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
@@ -474,4 +528,8 @@ init();
 render();
 
 var n = new Node("name", 4);
-var s = new Node("hi", 2);
+//var s = new Node("hi", 2);
+//var e = new Edge(n.output, s.args[0]);
+//clear();
+clear();
+console.log(scene);
