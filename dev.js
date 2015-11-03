@@ -4,6 +4,16 @@ var HOVER_OBJECT, SELECTED_OBJECT, CLICKED_OBJECT, DRAG_EDGE, DRAG_TARGET, ENDPO
 var HOVER_OPACITY = 0.7;
 var OBJECTS = [], SCOPES = [], NODES = [], EDGES = [], INPUTS = [], OUTPUTS = [], ADD_INPUTS = [];
 var NODE_HEIGHT = 20, NODE_WIDTH = 10, NODE_PADDING = 10, INPUT_PADDING = 20, INPUT_ELEVATION = 1;
+var COLORS = {
+    scope: '#ffffff',
+    node: '#119955',
+    edge: '#119955',
+    text: '#ffffff',
+    output: '#119955',
+    input: '#ffffff',
+    addInput: '#119955',
+    highlight: '#ffff00'
+};
 var SCOPE_COLOR = '#ffffff', NODE_COLOR = '#119955', EDGE_COLOR = '#119955', TEXT_COLOR = '#ffffff';
 var OUTPUT_COLOR = '#119955', INPUT_COLOR = '#ffffff', ADD_INPUT_COLOR = '#119955', HIGHLIGHT_COLOR = '#ffff00';
 var EDITOR_WIDTH = 400;
@@ -11,13 +21,13 @@ var SCOPE_ELEVATION_PADDING = 50;
 var PARENS;
 
 var materials = {
-    scope: function() {return new THREE.MeshBasicMaterial({color: SCOPE_COLOR, visible: true, transparent: true, opacity: 0.5});},
-    node: function() {return new THREE.MeshPhongMaterial({color: NODE_COLOR, shading: THREE.FlatShading, transparent: true, opacity: 1});},
-    edge: function() {return new THREE.MeshPhongMaterial({color: EDGE_COLOR, shading: THREE.FlatShading,transparent: true, opacity: 1})},
-    text:  function() {return new THREE.MeshPhongMaterial({color: TEXT_COLOR, shading: THREE.FlatShading, transparent: true, opacity: 1})},
-    input: function() {return new THREE.MeshPhongMaterial({color: INPUT_COLOR, shading: THREE.FlatShading, transparent: true, opacity: 1})},
-    addInput: function() {return new THREE.MeshPhongMaterial({color: ADD_INPUT_COLOR, shading: THREE.FlatShading, transparent: true, opacity: 1})},
-    output: function() {return new THREE.MeshPhongMaterial({color: OUTPUT_COLOR, shading: THREE.FlatShading, transparent: true, opacity: 1})}
+    scope: function() {return new THREE.MeshBasicMaterial({color: COLORS.scope, visible: true, transparent: true, opacity: 0.5});},
+    node: function() {return new THREE.MeshPhongMaterial({color: COLORS.node, shading: THREE.FlatShading, transparent: true, opacity: 1});},
+    edge: function() {return new THREE.MeshPhongMaterial({color: COLORS.edge, shading: THREE.FlatShading,transparent: true, opacity: 1})},
+    text:  function() {return new THREE.MeshPhongMaterial({color: COLORS.text, shading: THREE.FlatShading, transparent: true, opacity: 1})},
+    input: function() {return new THREE.MeshPhongMaterial({color: COLORS.input, shading: THREE.FlatShading, transparent: true, opacity: 1})},
+    addInput: function() {return new THREE.MeshPhongMaterial({color: COLORS.addInput, shading: THREE.FlatShading, transparent: true, opacity: 1})},
+    output: function() {return new THREE.MeshPhongMaterial({color: COLORS.output, shading: THREE.FlatShading, transparent: true, opacity: 1})}
 };
 var geometries = {
     scope: function() {
@@ -131,6 +141,7 @@ function Node(name, numberOfInputs) {
                 INPUT_PADDING * (i - (this.inputs.length / 2.0)), NODE_HEIGHT / 2.0, INPUT_ELEVATION
             );
             if (this.inputs[i].edge) this.inputs[i].edge.update();
+            this.inputs[i].index = i;
         }
         this.input.position.set(INPUT_PADDING * (this.inputs.length / 2.0), NODE_HEIGHT / 2.0, INPUT_ELEVATION);
         this.mesh.add(input);
@@ -152,6 +163,7 @@ function Node(name, numberOfInputs) {
                 INPUT_PADDING * (i - (this.inputs.length / 2.0)), NODE_HEIGHT / 2.0, INPUT_ELEVATION
             );
             if (this.inputs[i].edge) this.inputs[i].edge.update();
+            this.inputs[i].index = i;
         }
         this.input.position.set(INPUT_PADDING * (this.inputs.length / 2.0), NODE_HEIGHT / 2.0, INPUT_ELEVATION);
         if (this.width < INPUT_PADDING * this.inputs.length) this.resize();
@@ -218,10 +230,6 @@ function Edge(start, end) {
         else console.error("Could not remove Edge.mesh from EDGES");
         this.end.edge = null;
         this.start.edge = null;
-        if (this.start.type == 'input')
-            if (this.start.index > -1) this.start.parent.object.removeInput(this.start.index);
-        if (this.end.type == 'input')
-            if (this.end.index > -1) this.end.parent.object.removeInput(this.end.index);
         removeMesh(this.mesh);
     };
     this.update = function() {
@@ -314,7 +322,7 @@ function treeify(node) {
     var inputs = node.inputs;
     var input_trees = [];
     for (var i = 0; i < inputs.length; i++) {
-        var parent_node = inputs[i].edge.output.parent.object;
+        var parent_node = inputs[i].edge.start.parent.object;
         input_trees.push(treeify(parent_node));
     }
     return [node, input_trees];
@@ -505,30 +513,12 @@ function render() {
     RENDERER.render(SCENE, CAMERA);
 }
 
-function onTouchStart(event) {
-
-}
-
-function onTouchMove(event) {
-
-}
-
-function onTouchEnd(event) {
-
-}
-
-function onTouchCancel(event) {
-
-}
-
-function onMouseDown(event) {
+function down(x, y) {
     if (CLICKED_OBJECT) setOpacity(CLICKED_OBJECT, 1);
-    event.preventDefault();
     CLICKED_OBJECT = null;
-    if (event.clientX < EDITOR_WIDTH) return;
-    if (event.buttons == 2) return;
-    MOUSE.x = ((event.clientX - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
-    MOUSE.y = - (event.clientY / window.innerHeight) * 2 + 1;
+    if (x < EDITOR_WIDTH) return;
+    MOUSE.x = ((x - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
+    MOUSE.y = - (y / window.innerHeight) * 2 + 1;
     RAYCASTER.setFromCamera(MOUSE, CAMERA);
     var intersects = RAYCASTER.intersectObjects(NODES);
     if (intersects.length > 0) {
@@ -545,26 +535,40 @@ function onMouseDown(event) {
         CONTROLS.enabled = false;
         SELECTED_OBJECT = intersects[0].object;
         MOUSE.z = SELECTED_OBJECT.position.z;
-        DRAG_TARGET = {temp: true, position: intersects[0].point, parent: {position: new THREE.Vector3(0, 0, 0)}};
-        if (SELECTED_OBJECT.edge) {
-            if (SELECTED_OBJECT.edge.start == SELECTED_OBJECT)
-                SELECTED_OBJECT.edge.end.parent.object.removeInput(SELECTED_OBJECT.edge.end.index);
-            SELECTED_OBJECT.edge.remove();
+
+        DRAG_TARGET = {position: intersects[0].point, parent: {position: new THREE.Vector3(0, 0, 0)}};
+        var port;
+        if (SELECTED_OBJECT.type == 'addInput') {
+            SELECTED_OBJECT = SELECTED_OBJECT.parent.object.addInput();
+            DRAG_EDGE = new Edge(DRAG_TARGET, SELECTED_OBJECT);
+            SELECTED_OBJECT.parent.parent.object.addEdge(DRAG_EDGE);
+            port = 'output'
         }
-        if (SELECTED_OBJECT.type == 'addInput') SELECTED_OBJECT = SELECTED_OBJECT.parent.object.addInput();
-        DRAG_EDGE = new Edge(SELECTED_OBJECT, DRAG_TARGET);
-        SELECTED_OBJECT.parent.parent.object.addEdge(DRAG_EDGE);
-        var port = SELECTED_OBJECT.type == 'input' ? 'output' : 'input';
+        else if (SELECTED_OBJECT.type == 'input') {
+            if (SELECTED_OBJECT.edge) SELECTED_OBJECT.edge.remove();
+            DRAG_EDGE = new Edge(DRAG_TARGET, SELECTED_OBJECT);
+            SELECTED_OBJECT.parent.parent.object.addEdge(DRAG_EDGE);
+            port = 'output'
+        }
+        else if (SELECTED_OBJECT.type == 'output') {
+            if (SELECTED_OBJECT.edge) {
+                SELECTED_OBJECT.edge.end.parent.object.removeInput(SELECTED_OBJECT.edge.end.index);
+                SELECTED_OBJECT.edge.remove();
+            }
+            DRAG_EDGE = new Edge(SELECTED_OBJECT, DRAG_TARGET);
+            SELECTED_OBJECT.parent.parent.object.addEdge(DRAG_EDGE);
+            port = 'input'
+        }
         for (var i = 0; i < SELECTED_OBJECT.parent.parent.object.nodes.length; i++) {
             var node = SELECTED_OBJECT.parent.parent.object.nodes[i];
             if (node != SELECTED_OBJECT.parent.object) {
                 var endpoint = node[port];
-                endpoint.material.color.set(HIGHLIGHT_COLOR);
+                endpoint.material.color.set(COLORS.highlight);
                 ENDPOINTS.push(endpoint);
+                ENDPOINTS = ENDPOINTS.concat(node.inputs);
             }
         }
         CONTAINER.style.cursor = 'move';
-        return;
     }
     intersects = RAYCASTER.intersectObjects(EDGES);
     if (intersects.length > 0) {
@@ -572,14 +576,12 @@ function onMouseDown(event) {
     }
 }
 
-function onMouseMove(event) {
-    if (event.clientX < EDITOR_WIDTH) return;
-    event.preventDefault();
-    MOUSE.x = ((event.clientX - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
-    MOUSE.y = - (event.clientY / window.innerHeight) * 2 + 1;
+function move(x, y, dragging) {
+    if (x < EDITOR_WIDTH) return;
+    MOUSE.x = ((x - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
+    MOUSE.y = - (y / window.innerHeight) * 2 + 1;
     RAYCASTER.setFromCamera(MOUSE, CAMERA);
-    if (event.buttons == 1 && SELECTED_OBJECT && SELECTED_OBJECT.type != 'edge') {
-        // we're dragging something
+    if (dragging && SELECTED_OBJECT && SELECTED_OBJECT.type != 'edge') {
         var intersect;
         if (DRAG_EDGE) {
             intersect = RAYCASTER.intersectObject(SELECTED_OBJECT.parent.parent);
@@ -614,34 +616,39 @@ function onMouseMove(event) {
     }
 }
 
-function onMouseUp(event) {
-    if (event.clientX < EDITOR_WIDTH) return;
-    event.preventDefault();
-    MOUSE.x = ((event.clientX - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
-    MOUSE.y = - (event.clientY / window.innerHeight) * 2 + 1;
+function up(x, y) {
+    if (x < EDITOR_WIDTH) return;
+    MOUSE.x = ((x - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
+    MOUSE.y = - (y / window.innerHeight) * 2 + 1;
     RAYCASTER.setFromCamera(MOUSE, CAMERA);
     CONTROLS.enabled = true;
     var intersects;
     if (DRAG_EDGE) {
         for (var i = 0; i < ENDPOINTS.length; i++)
-            ENDPOINTS[i].material.color.set(ENDPOINTS[i].type == 'output' ? OUTPUT_COLOR : ADD_INPUT_COLOR);
+            ENDPOINTS[i].material.color.set(COLORS[ENDPOINTS[i].type]);
         intersects = RAYCASTER.intersectObjects(ENDPOINTS);
         if (intersects.length > 0) {
             var endpoint = intersects[0].object;
-            if (endpoint.edge) endpoint.edge.remove();
-            if (endpoint == SELECTED_OBJECT) return;
+            if (endpoint == SELECTED_OBJECT) {
+                DRAG_EDGE.remove();
+                if (endpoint.type == 'input') endpoint.parent.object.removeInput(endpoint.index);
+                return;
+            }
+            if (endpoint.edge) {
+                if (endpoint.type == 'output') endpoint.edge.end.parent.object.removeInput(endpoint.edge.end.index);
+                endpoint.edge.remove();
+            }
             if (endpoint.type == 'addInput') {
                 endpoint = endpoint.parent.object.addInput();
-                DRAG_EDGE.input = endpoint;
+                DRAG_EDGE.end = endpoint;
             }
-            if (endpoint.type == 'input') DRAG_EDGE.input = endpoint;
-            if (endpoint.type == 'output') DRAG_EDGE.output = endpoint;
-            DRAG_EDGE.end = endpoint;
+            else if (endpoint.type == 'input') DRAG_EDGE.end = endpoint;
+            else if (endpoint.type == 'output') DRAG_EDGE.start = endpoint;
             endpoint.edge = DRAG_EDGE;
             DRAG_EDGE.update();
         }
         else {
-            if (DRAG_EDGE.start.type == 'input') DRAG_EDGE.start.parent.object.removeInput(DRAG_EDGE.start.index);
+            if (SELECTED_OBJECT.type == 'input') SELECTED_OBJECT.parent.object.removeInput(SELECTED_OBJECT.index);
             DRAG_EDGE.remove();
         }
     }
@@ -659,6 +666,42 @@ function onMouseUp(event) {
     DRAG_EDGE = null;
     DRAG_TARGET = null;
     CONTAINER.style.cursor = 'auto';
+}
+
+function onTouchStart(event) {
+    event.preventDefault();
+    if (event.touches.length == 1) down(event.touches[0].clientX, event.touches[0].clientY);
+}
+
+function onTouchMove(event) {
+    event.preventDefault();
+    if (event.touches.length == 1) move(event.touches[0].clientX, event.touches[0].clientY, true);
+}
+
+function onTouchEnd(event) {
+    event.preventDefault();
+    up(event.touches[0].clientX, event.touches[0].clientY);
+}
+
+function onTouchCancel(event) {
+    event.preventDefault();
+    up(0, 0);
+}
+
+function onMouseDown(event) {
+    event.preventDefault();
+    if (event.buttons == 2) return;
+    down(event.clientX, event.clientY);
+}
+
+function onMouseMove(event) {
+    event.preventDefault();
+    move(event.clientX, event.clientY, event.buttons == 1);
+}
+
+function onMouseUp(event) {
+    event.preventDefault();
+    up(event.clientX, event.clientY);
 }
 
 function onKeyUp(event) {
