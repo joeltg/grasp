@@ -2,9 +2,10 @@ var SCENE, CAMERA, RENDERER, CONTROLS, CONTAINER;
 var RAYCASTER, MOUSE, OFFSET;
 var HOVER_OBJECT, SELECTED_OBJECT, CLICKED_OBJECT, DRAG_EDGE, DRAG_TARGET, ENDPOINTS = [];
 var HOVER_OPACITY = 0.7;
-var OBJECTS = [], SCOPES = [], NODES = [], EDGES = [], INPUTS = [], OUTPUTS = [], ADD_INPUTS = [];
+var OBJECTS = [], PLANES = [], SCOPES = [], NODES = [], EDGES = [], INPUTS = [], OUTPUTS = [], ADD_INPUTS = [];
 var NODE_HEIGHT = 20, NODE_WIDTH = 10, NODE_PADDING = 10, INPUT_PADDING = 20, INPUT_ELEVATION = 1;
 var COLORS = {
+    plane: '#ffffff',
     scope: '#ffffff',
     node: '#119955',
     edge: '#119955',
@@ -14,14 +15,14 @@ var COLORS = {
     addInput: '#119955',
     highlight: '#ffff00'
 };
-var SCOPE_COLOR = '#ffffff', NODE_COLOR = '#119955', EDGE_COLOR = '#119955', TEXT_COLOR = '#ffffff';
-var OUTPUT_COLOR = '#119955', INPUT_COLOR = '#ffffff', ADD_INPUT_COLOR = '#119955', HIGHLIGHT_COLOR = '#ffff00';
 var EDITOR_WIDTH = 400;
-var SCOPE_ELEVATION_PADDING = 50;
+var PLANE_ELEVATION_PADDING = 100;
+
 var PARENS;
 
 var materials = {
-    scope: function() {return new THREE.MeshBasicMaterial({color: COLORS.scope, visible: true, transparent: true, opacity: 0.5});},
+    plane: function() {return new THREE.MeshBasicMaterial({visible: false});},
+    scope: function() {return new THREE.MeshPhongMaterial({color: COLORS.scope, shading: THREE.FlatShading, transparent: true, opacity: 0.5});},
     node: function() {return new THREE.MeshPhongMaterial({color: COLORS.node, shading: THREE.FlatShading, transparent: true, opacity: 1});},
     edge: function() {return new THREE.MeshPhongMaterial({color: COLORS.edge, shading: THREE.FlatShading,transparent: true, opacity: 1})},
     text:  function() {return new THREE.MeshPhongMaterial({color: COLORS.text, shading: THREE.FlatShading, transparent: true, opacity: 1})},
@@ -30,8 +31,24 @@ var materials = {
     output: function() {return new THREE.MeshPhongMaterial({color: COLORS.output, shading: THREE.FlatShading, transparent: true, opacity: 1})}
 };
 var geometries = {
-    scope: function() {
-        var g = new THREE.PlaneGeometry(100, 100, 1, 1);
+    plane: function() {
+        var g = new THREE.PlaneGeometry(1000, 1000, 1, 1);
+        g.dynamic = true;
+        return g;
+    },
+    scope: function(w, h) {
+        var points = [];
+        if (!w) w = 100;
+        if (!h) h = 100;
+        points.push(new THREE.Vector2(- 0.5 * w, - 0.5 * h));
+        points.push(new THREE.Vector2(- 0.5 * w, 0.5 * h));
+        points.push(new THREE.Vector2(0.5 * w, 0.5 * h));
+        points.push(new THREE.Vector2(0.5 * w, - 0.5 * h));
+        var shape = new THREE.Shape(points);
+        var settings = {amount: 1, bevelEnabled: false, steps: 1};
+        var g = new THREE.ExtrudeGeometry(shape, settings);
+        g.width = w;
+        g.height = h;
         g.dynamic = true;
         return g;
     },
@@ -68,7 +85,29 @@ var geometries = {
     output: function() {return new THREE.SphereGeometry(5)}
 };
 
-function Scope(level) {
+function Plane(level) {
+    this.addScope = function(scope) {
+        this.scopes.push(scope);
+        this.mesh.add(scope.mesh);
+    };
+    this.remove = function() {
+        var index = PLANES.indexOf(this.mesh);
+        if (index > -1) PLANES.splice(index, 1);
+        else console.error("Could not remove Plane.mesh from PLANES");
+        for (var i = 0; i < this.scopes.length; i++)
+            this.scopes[i].remove();
+        removeMesh(this.mesh)
+    };
+    this.scopes = [];
+    this.type = 'plane';
+    this.mesh = new THREE.Mesh(geometries.plane(), materials.plane());
+    this.mesh.position.set(0, 0, PLANE_ELEVATION_PADDING * level);
+    this.mesh.object = this;
+    PLANES.push(this.mesh);
+    return this;
+}
+
+function Scope(numberOfInputs) {
     this.addNode = function(node) {
         this.nodes.push(node);
         this.mesh.add(node.mesh);
@@ -77,35 +116,86 @@ function Scope(level) {
         this.edges.push(edge);
         this.mesh.add(edge.mesh);
     };
+    this.addInput = function(index) {
+        if (!index && index != 0) index = this.inputs.length;
+        var input = new THREE.Mesh(geometries.input(), materials.input());
+        input.type = 'input';
+        this.inputs.splice(index, 0, input);
+        for (var i = 0; i < this.inputs.length; i++) {
+            this.inputs[i].position.set(
+                INPUT_PADDING * (i - ((this.inputs.length - 1) / 2.0)), this.height / 2.0, INPUT_ELEVATION
+            );
+            if (this.inputs[i].edge) this.inputs[i].edge.update();
+            this.inputs[i].index = i;
+        }
+        this.mesh.add(input);
+        INPUTS.push(input);
+        var inputWidth = (INPUT_PADDING * this.inputs.length) + NODE_PADDING;
+        if (this.width < inputWidth) this.setSize(inputWidth, this.minHeight, true);
+        return input;
+    };
+    this.removeInput = function(index) {
+        if (!index && index != 0) index = this.inputs.length - 1;
+        var input = this.inputs[index];
+        this.inputs.splice(index, 1);
+        var globalIndex = INPUTS.indexOf(input);
+        if (globalIndex > -1) INPUTS.splice(globalIndex, 1);
+        else console.error("Could not remove input from INPUTS");
+        removeMesh(input);
+        for (var i = 0; i < this.inputs.length; i++) {
+            this.inputs[i].position.set(
+                INPUT_PADDING * (i - ((this.inputs.length - 1) / 2.0)), this.height / 2.0, INPUT_ELEVATION
+            );
+            if (this.inputs[i].edge) this.inputs[i].edge.update();
+            this.inputs[i].index = i;
+        }
+        var inputWidth = (INPUT_PADDING * this.inputs.length) + NODE_PADDING;
+        if (this.width < inputWidth) this.setSize(inputWidth, this.minHeight, true);
+    };
     this.remove = function() {
         var index = OBJECTS.indexOf(this.mesh);
         if (index > -1) OBJECTS.splice(index, 1);
+        else console.error("Could not remove Scope.mesh from OBJECTS");
         index = SCOPES.indexOf(this.mesh);
         if (index > -1) SCOPES.splice(index, 1);
         else console.error("Could not remove Scope.mesh from SCOPES");
-        for (var i = 0; i < this.nodes.length; i++) {
+        for (var i = 0; i < this.nodes.length; i++)
             this.nodes[i].remove();
-        }
         removeMesh(this.mesh);
     };
-    this.setSize = function(width, height) {
+    this.setSize = function(width, height, reset) {
         this.width = width;
         this.height = height;
+        if (reset) {
+            this.minWidth = width;
+            this.minHeight = height;
+        }
         var g = this.mesh.geometry;
-        g.vertices[0].set(-width / 2.0, -height / 2.0, 0);
-        g.vertices[1].set(-width / 2.0, height / 2.0, 0);
-        g.vertices[2].set(width / 2.0, -height / 2.0, 0);
-        g.vertices[3].set(width / 2.0, height / 2.0, 0);
+        for (var i = 0; i < this.mesh.geometry.vertices.length; i++) {
+            var vertex = this.mesh.geometry.vertices[i];
+            vertex.x = (vertex.x < 0 ? -1 : 1) * width / 2.0;
+            vertex.y = (vertex.y < 0 ? -1 : 1) * height / 2.0;
+        }
         g.verticesNeedUpdate = true;
+        g.normalsNeedUpdate = true;
+        g.computeFaceNormals();
+        g.computeVertexNormals();
+        g.computeBoundingSphere();
     };
     this.type = 'scope';
-    this.level = level;
     this.nodes = [];
     this.edges = [];
+    this.inputs = [];
     this.mesh = new THREE.Mesh(geometries.scope(), materials.scope());
-    this.mesh.position.set(0, 0, level * SCOPE_ELEVATION_PADDING);
-    this.width = 1000;
-    this.height = 1000;
+    this.width = 100;
+    this.height = 100;
+    this.minWidth = 100;
+    this.minHeight = 100;
+    this.output = new THREE.Mesh(geometries.output(), materials.output());
+    this.output.type = 'output';
+    this.mesh.add(this.output);
+    this.output.position.set(0, -this.height / 2.0, INPUT_ELEVATION);
+    OUTPUTS.push(this.output);
     this.setSize(this.width, this.height);
     this.mesh.object = this;
     OBJECTS.push(this.mesh);
@@ -244,6 +334,8 @@ function Edge(start, end) {
     };
     this.start = start;
     this.end = end;
+
+    /*
     if (start.type == 'output') {
         this.output = start;
         this.input = end;
@@ -252,6 +344,7 @@ function Edge(start, end) {
         this.output = end;
         this.input = start;
     }
+    */
 
     start.edge = this;
     end.edge = this;
@@ -329,6 +422,7 @@ function treeify(node) {
 }
 
 function layout() {
+
     for (var i = 0; i < SCOPES.length; i++) {
         var scope = SCOPES[i].object;
         var nodes = scope.nodes.slice();
@@ -351,34 +445,27 @@ function layout() {
         var x_padding = 80;
         var y_padding = 50;
 
-        var width = 100;
-        var height = layers.length * y_padding;
-        for (var b = 0; b < layers.length; b++)
-            if (layers[b].length * x_padding > width)
-                width = layers[b].length * x_padding;
-        //scope.setSize(width, 2 * height);
-
+        var max_n = 0;
         for (var m = 0; m < layers.length; m++) {
-            if (layers[m].length * x_padding > width) {
-                width = layers[m].length * x_padding;
-                scope.setSize(width, height);
-            }
+            max_n = Math.max(max_n, layers[m].length);
             for (var n = 0; n < layers[m].length; n++) {
                 var node = layers[m][n];
-                node.setPosition(x_padding * (n - (layers[m].length / 2.0)), y_padding * (m), scope.level * SCOPE_ELEVATION_PADDING);
+                node.setPosition(x_padding * (n - (layers[m].length / 2.0)), y_padding * (m - (layers.length / 2.0)), 0);
                 if (node.output.edge) node.output.edge.update();
             }
         }
+        scope.setSize(x_padding * max_n, y_padding * layers.length, true);
     }
 }
 
 function clear() {
+
     while (NODES.length > 0)
         NODES[0].object.remove();
     while (EDGES.length > 0)
         EDGES[0].object.remove();
-    //while (OBJECTS.length > 0)
-        //OBJECTS[0].object.remove();
+    while (SCOPES.length > 0)
+        SCOPES[0].object.remove();
 }
 
 function center() {
@@ -570,6 +657,16 @@ function down(x, y) {
         }
         CONTAINER.style.cursor = 'move';
     }
+    intersects = RAYCASTER.intersectObjects(SCOPES);
+    if (intersects.length > 0) {
+        CONTROLS.enabled = false;
+        SELECTED_OBJECT = intersects[0].object;
+        MOUSE.z = SELECTED_OBJECT.position.z;
+        intersects = RAYCASTER.intersectObject(SELECTED_OBJECT.parent);
+        if (intersects.length > 0) OFFSET.copy(intersects[0].point).sub(SELECTED_OBJECT.position);
+        CONTAINER.style.cursor = 'move';
+        return;
+    }
     intersects = RAYCASTER.intersectObjects(EDGES);
     if (intersects.length > 0) {
         SELECTED_OBJECT = intersects[0].object;
@@ -581,7 +678,7 @@ function move(x, y, dragging) {
     MOUSE.x = ((x - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
     MOUSE.y = - (y / window.innerHeight) * 2 + 1;
     RAYCASTER.setFromCamera(MOUSE, CAMERA);
-    if (dragging && SELECTED_OBJECT && SELECTED_OBJECT.type != 'edge') {
+    if (dragging && SELECTED_OBJECT && SELECTED_OBJECT.object.type != 'edge') {
         var intersect;
         if (DRAG_EDGE) {
             intersect = RAYCASTER.intersectObject(SELECTED_OBJECT.parent.parent);
@@ -595,12 +692,32 @@ function move(x, y, dragging) {
             intersect = RAYCASTER.intersectObject(SELECTED_OBJECT.parent);
             if (intersect.length > 0) {
                 SELECTED_OBJECT.position.copy(intersect[0].point.sub(OFFSET));
+                SELECTED_OBJECT.position.z = 0;
                 var object = SELECTED_OBJECT.object;
-                for (var i = 0; i < object.inputs.length; i++)
+                if (object.inputs) for (var i = 0; i < object.inputs.length; i++)
                     if (object.inputs[i].edge) object.inputs[i].edge.update();
+                if (object.output && object.output.edge) object.output.edge.update();
+                if (object.type == 'node') {
+                    var scope = object.mesh.parent.object;
+                    if (Math.abs(SELECTED_OBJECT.position.x) > scope.minWidth / 2.0)
+                        scope.setSize(Math.abs(SELECTED_OBJECT.position.x) * 2.0, scope.height);
+                    if (Math.abs(SELECTED_OBJECT.position.y) > scope.minHeight / 2.0)
+                        scope.setSize(scope.width, Math.abs(SELECTED_OBJECT.position.y) * 2.0);
+                }
+            }
+            else {
+                intersect = RAYCASTER.intersectObject(SELECTED_OBJECT.parent.parent);
+                if (intersect.length == 0) return;
+                var width = Math.max(Math.abs(intersect[0].point.x), SELECTED_OBJECT.parent.object.minWidth / 2.0);
+                var height = Math.max(Math.abs(intersect[0].point.y), SELECTED_OBJECT.parent.object.minHeight / 2.0);
+                SELECTED_OBJECT.parent.object.setSize(2 * width, 2 * height, false);
+                SELECTED_OBJECT.position.copy(intersect[0].point.sub(OFFSET));
+                object = SELECTED_OBJECT.object;
+                for (i = 0; i < object.inputs.length; i++) if (object.inputs[i].edge) object.inputs[i].edge.update();
                 if (object.output.edge) object.output.edge.update();
             }
         }
+        return;
     }
     var intersects = RAYCASTER.intersectObjects(NODES.concat(INPUTS).concat(ADD_INPUTS).concat(OUTPUTS).concat(EDGES));
     if (intersects.length > 0) {
@@ -715,17 +832,21 @@ function onKeyUp(event) {
 init();
 
 render();
+var p = new Plane(0);
+var s = new Scope();
+p.addScope(s);
+SCENE.add(p.mesh);
+//s.addInput();
+s.addInput();
+s.addInput();
 
-var s = new Scope(0);
+var p2 = new Plane(1);
+var s2 = new Scope();
+p2.addScope(s2);
+SCENE.add(p2.mesh);
+n = new Node("test");
+s2.addNode(n);
+s2.addInput();
+s2.addInput();
+s2.addInput();
 
-var n = new Node("name");
-var n2 = new Node("name2");
-var n3 = new Node('name3');
-s.addNode(n);
-s.addNode(n2);
-s.addNode(n3);
-SCENE.add(s.mesh);
-//n2.setPosition(0, 20, 0);
-//n.setPosition(0, -20, 0);
-
-layout();
