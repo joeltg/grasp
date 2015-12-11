@@ -144,6 +144,7 @@ function GRASPObject() {
         return object;
     };
     this.setPosition = function(x, y, z) {
+        if (!z) z = 0;
         this.mesh.position.set(x, y, z);
     };
     if (this.type != 'scene') {
@@ -520,6 +521,7 @@ function Edge(start, end, trans_plane) {
             this.mesh.rotation.y = 0;
             this.mesh.rotation.x = 0;
             length = distance(start, end);
+            this.length = length;
             this.mesh.scale.set(1, length * 1.15, 1);
 
             var yaxis = new THREE.Vector3(0, 1, 0);
@@ -538,6 +540,7 @@ function Edge(start, end, trans_plane) {
 
             direction = new THREE.Vector3().subVectors(end, start);
             length = distance(start, end);
+            this.length = length;
             this.mesh.position.set(start.x, start.y, start.z);
             this.mesh.rotation.z = 0;
             this.mesh.scale.set(1, length * 1.15, 1);
@@ -943,15 +946,83 @@ function onMouseUp(event) {
     up(event.clientX, event.clientY);
 }
 
-function render() {
-    requestAnimationFrame(render);
-    CONTROLS.update();
-    RENDERER.render(SCENE.mesh, CAMERA);
+function updateForces(scene) {
+  var k = 0.01;
+  var repellent = -1000;
+  var dx, dy, start, end, startNode, endNode, scale, v, distance;
+  if (SCENE) for (var i = 0; i < SCENE.meshes.scope.length; i++) {
+    var scope = SCENE.meshes.scope[i].object;
+    for (var j = 0; j < scope.children.node.length; j++)
+      scope.children.node[j].force = new THREE.Vector2();
+    for (j = 0; j < scope.children.edge.length; j++) {
+      var edge = scope.children.edge[j];
+      edge.update();
+      if (edge.start && edge.end) {
+        start = null; end = null;
+        if (edge.start.parent.type == 'node') {
+          startNode = edge.start.parent;
+          start = edge.start.parent.mesh.position.clone().add(edge.start.mesh.position);
+        }
+        else if (edge.start.type == 'node') {
+          startNode = edge.start;
+          start = edge.start.mesh.position.clone();
+        }
+        if (edge.end.parent.type == 'node') {
+          endNode = edge.end.parent;
+          end = edge.end.parent.mesh.position.clone().add(edge.end.mesh.position);
+        }
+        else if (edge.end.type == 'node') {
+          endNode = edge.end;
+          end = edge.end.mesh.position.clone();
+        }
+        if (start && end) {
+          // edge spring
+          v = new THREE.Vector2(end.x - start.x, end.y - start.y);
+          v.multiplyScalar(k);
+          if (startNode != DRAG_OBJECT) startNode.force.add(v);
+          v.multiplyScalar(-1);
+          if (endNode != DRAG_OBJECT) endNode.force.add(v);
+        }
+      }
+    }
+    var node, sibling;
+    // node repellent
+    for (j = 0; j < scope.children.node.length; j++) {
+      node = scope.children.node[j];
+      if (node != DRAG_OBJECT) for (var k = 0; k < scope.children.node.length; k++) if (k != j) {
+        sibling = scope.children.node[k];
+        dx = sibling.mesh.position.x - node.mesh.position.x;
+        dy = sibling.mesh.position.y - node.mesh.position.y;
+        if (dx == 0) dx = -1;
+        if (dy == 0) dy = -1;
+        distance = (dx * dx) + (dy * dy);
+        if (distance < 10) scale = .1;
+        else scale = repellent / distance;
+        v = new THREE.Vector2(dx, dy);
+        v.setLength(scale);
+        node.force.add(v);
+      }
+    }
+    for (j = 0; j < scope.children.node.length; j++) {
+      node = scope.children.node[j];
+      if (Math.abs(node.mesh.position.x) + (node.width / 2.0) < SCOPE.width / 2.0)
+        node.mesh.position.x += node.force.x;
+      if (Math.abs(node.mesh.position.y) + (node.height / 2.0) < SCOPE.height / 2.0)
+        node.mesh.position.y += node.force.y
+    }
+  }
+}
+
+function render(scene) {
+  updateForces(scene)
+  requestAnimationFrame(render);
+  CONTROLS.update();
+  RENDERER.render(SCENE.mesh, CAMERA);
 }
 
 SCENE = new Scene();
 
-render();
+render(SCENE);
 
 
 var PLANE = SCENE.addPlane(0);

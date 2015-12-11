@@ -5,7 +5,6 @@ editor.getSession().on('change', function(e) {
 
 document.getElementById('center').addEventListener('click', center, false);
 document.getElementById('clear').addEventListener('click', clear, false);
-document.getElementById('layout').addEventListener('click', layout, false);
 document.getElementById('calculate').addEventListener('click', calculate, false);
 
 function center() {
@@ -18,21 +17,20 @@ function clear() {
   SCOPE.remove();
   SCOPE = PLANE.addScope();
 }
-function layout() {
-
-}
 function calculate() {
   clear();
   //center();
   var data = paredit.parse(editor.getValue());
   for (var i = 0; i < data.children.length; i++) addTree(data.children[i], null);
-  layout();
 };
 
 function addTree(data, parent, index) {
   if (data.type == 'list') {
     if (data.children && data.children[0].type == 'symbol') {
       var node = SCOPE.addNode(data.children[0].source);
+      var x = Math.floor((Math.random() - 0.5) * SCOPE.width);
+      var y = Math.floor((Math.random() - 0.5) * SCOPE.height);
+      node.setPosition(x, y);
       if (parent != null) {
         parent.addArg(index);
         SCOPE.addEdge(node.children.output[0], parent.args[index]);
