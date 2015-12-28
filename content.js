@@ -1,7 +1,7 @@
 "use strict";
 var SCENE, CAMERA, RENDERER, CONTROLS, CONTAINER, RAYCASTER, MOUSE, OFFSET = new THREE.Vector3();
 var ATOM_HEIGHT = 8, NODE_HEIGHT = 20, NODE_WIDTH = 10, NODE_PADDING = 10, INPUT_PADDING = 20, INPUT_ELEVATION = 1;
-var EDITOR_WIDTH = 400, LEVEL_SPACING = 50;
+var EDITOR_WIDTH = 400, LEVEL_SPACING = 100;
 
 var DRAG_OBJECT, DRAG_EDGE, DRAG_SOURCE, DRAG_TARGET, DRAG_INPUT, DRAG_OUTPUT;
 
@@ -309,7 +309,7 @@ function Scope() {
         for (var i = 0; i < length; i++) {
             var input = this.children.input[i];
             input.setPosition((this.width / length) * (i - ((length - 1) / 2.0)), this.height / 2.0, INPUT_ELEVATION);
-            for (var j = 0; j < input.edge.length; j++) input.edge[j].update();
+            if (input.edge) input.edge.update();
         }
     };
     this.updateOutputs = function() {
@@ -317,14 +317,14 @@ function Scope() {
         for (var i = 0; i < length; i++) {
             var output = this.children.output[i];
             output.setPosition(INPUT_PADDING * (i - ((length - 1) / 2.0)), - this.height / 2.0, INPUT_ELEVATION);
-            for (var j = 0; j < output.edge.length; j++) output.edge[j].update();
+            if (output.edge) output.edge.update();
         }
     };
     this.updateLinks = function() {
         for (var i = 0; i < this.children.node.length; i++)
-            for (var j = 0; j < this.children.node[i].edge.length; j++) this.children.node[i].edge[j].update();
+            if (this.children.node[i].edge) this.children.node[i].edge.update();
         for (i = 0; i < this.children.output.length; i++)
-            for (j = 0; j < this.children.output[i].edge.length; j++) this.children.output[i].edge[j].update();
+            if (this.children.output[i].edge) this.children.output[i].edge.update();
     };
     this.updateSize = function() {
         var min = this.children.node.length * 50;
@@ -452,7 +452,7 @@ function Node(name) {
             position += (arg.width || 0) / 2.0;
             arg.setPosition(position, this.height / 2.0, INPUT_ELEVATION);
             position += INPUT_PADDING + ((arg.width || 0) / 2.0);
-            for (var j = 0; j < arg.edge.length; j++) arg.edge[j].update();
+            if (arg.edge) arg.edge.update();
         }
     };
     this.updateOutputs = function() {
@@ -460,18 +460,18 @@ function Node(name) {
         for (var i = 0; i < length; i++) {
             var output = this.children.output[i];
             output.setPosition(INPUT_PADDING * (i - ((length - 1) / 2.0)), - this.height / 2.0, INPUT_ELEVATION);
-            for (var j = 0; j < output.edge.length; j++) output.edge[j].update();
+            if (output.edge) output.edge.update();
         }
     };
     this.updateLinks = function() {
-        for (var i = 0; i < this.children.input.length; i++)
-            for (var j = 0; j < this.children.input[i].edge.length; j++) this.children.input[i].edge[j].update();
+        for (var i = 0; i < this.args.length; i++)
+            if (this.args[i].edge) this.args[i].edge.update();
         for (i = 0; i < this.children.output.length; i++)
-            for (j = 0; j < this.children.output[i].edge.length; j++) this.children.output[i].edge[j].update();
+            if (this.children.output[i].edge) this.children.output[i].edge.update();
     };
     this.type = 'node';
     GRASPObject.apply(this);
-    this.edge = [];
+    this.edge = null;
     this.input_width = 10;
     this.output_width = 10;
     this.width = 10;
@@ -499,7 +499,7 @@ function Variable(name) {
 
 }
 
-function Edge(start, end, trans_plane) {
+function Edge(start, end) {
     this.update = function() {
         var direction, length;
         var start, end;
@@ -509,11 +509,13 @@ function Edge(start, end, trans_plane) {
             start.add(this.start.mesh.parent.position); // node or scope
             start.add(this.start.mesh.parent.parent.position); // scope or plane
             start.add(this.start.mesh.parent.parent.parent.position); // plane or scene
+            if (this.start.type == 'atom') start.add(this.start.input.mesh.position);
 
             end = this.end.mesh.position.clone();
             end.add(this.end.mesh.parent.position); // node or scope
             end.add(this.end.mesh.parent.parent.position); // scope or plane
             end.add(this.end.mesh.parent.parent.parent.position); // plane or scene
+            if (this.end.type == 'atom') end.add(this.end.input.mesh.position);
 
             this.mesh.position.set(start.x, start.y, start.z);
 
@@ -553,8 +555,8 @@ function Edge(start, end, trans_plane) {
     this.end = end;
     this.trans_plane = false;
 
-    start.edge = [this];
-    end.edge = [this];
+    start.edge = this;
+    end.edge = this;
     this.update();
     return this;
 }
@@ -565,7 +567,7 @@ function Input(radius) {
     this.params = {radius: this.radius};
     //this.width = radius * 2;
     GRASPObject.apply(this);
-    this.edge = [];
+    this.edge = null;
     return this;
 }
 
@@ -575,7 +577,7 @@ function Output(radius) {
     this.params = {radius: this.radius};
     //this.width = radius * 2;
     GRASPObject.apply(this);
-    this.edge = [];
+    this.edge = null;
     return this;
 }
 
@@ -591,14 +593,18 @@ function Atom(value) {
         if (!w) w = this.width;
     };
     this.type = 'atom';
-    this.edge = [];
+    this.edge = null;
     var text = new Text(String(value), 6);
     this.width = text.width;
+    var input = new Input(3);
     this.height = ATOM_HEIGHT;
     this.params = {width: this.width};
     GRASPObject.apply(this);
     this.value = String(value);
     this.add(text);
+    this.add(input);
+    input.setPosition((this.width / 2.0) + 4, 0, 3);
+    this.input = input;
     this.updateSize();
     return this;
 }
@@ -631,9 +637,9 @@ function down(x, y) {
         DRAG_SOURCE = intersect.object.object;
 
         if (DRAG_SOURCE.edge) {
-            DRAG_SOURCE.edge.start.edge = [];
+            DRAG_SOURCE.edge.start.edge = null;
             DRAG_SOURCE.edge.remove();
-            DRAG_SOURCE.edge = [];
+            DRAG_SOURCE.edge = null;
         }
         if (DRAG_SOURCE.parent.type == 'node') {
             // node input
@@ -670,7 +676,7 @@ function down(x, y) {
         if (DRAG_SOURCE.edge) {
             DRAG_SOURCE.edge.end.parent.removeArg(DRAG_SOURCE.edge.end.arg_index);
             DRAG_SOURCE.edge.remove();
-            DRAG_SOURCE.edge = [];
+            DRAG_SOURCE.edge = null;
         }
         if (DRAG_SOURCE.parent.type == 'node') {
             // node input
@@ -776,7 +782,10 @@ function move(x, y, dragging) {
                 DRAG_OBJECT.parent.updateInputs();
                 DRAG_OBJECT.parent.updateOutputs();
             }
-            DRAG_OBJECT.updateLinks()
+            if (DRAG_OBJECT.type == 'node') DRAG_OBJECT.updateLinks();
+            else for (i = 0; i < SCENE.children.edge.length; i++)
+                if ((SCENE.children.edge[i].start.parent.parent == DRAG_OBJECT) || (SCENE.children.edge[i].end.parent.parent == DRAG_OBJECT))
+                    SCENE.children.edge[i].update();
         }
         else if (DRAG_OBJECT.type == 'node') {
             // dragging node outside scope
@@ -844,9 +853,9 @@ function up(x, y) {
                 intersect = intersects[0].object.object == DRAG_TARGET ? intersects[1] : intersects[0];
                 end = intersect.object.object;
                 if (end.edge) {
-                    end.edge.start.edge = [];
+                    end.edge.start.edge = null;
                     end.edge.remove();
-                    end.edge = [];
+                    end.edge = null;
                 }
                 DRAG_TARGET.parent.addEdge(DRAG_SOURCE, end);
             }
@@ -854,7 +863,7 @@ function up(x, y) {
                 DRAG_TARGET.parent.addEdge(DRAG_SOURCE, DRAG_INPUT);
                 DRAG_INPUT = null;
             }
-            else DRAG_SOURCE.edge = [];
+            else DRAG_SOURCE.edge = null;
         }
         else if (DRAG_TARGET.type == 'output') {
             var start;
@@ -863,10 +872,10 @@ function up(x, y) {
                 intersect = intersects[0].object.object == DRAG_TARGET ? intersects[1] : intersects[0];
                 start = intersect.object.object;
                 if (start.edge) {
-                    start.edge.end.edge = [];
+                    start.edge.end.edge = null;
                     start.edge.end.parent.removeArg(start.edge.end.arg_index);
                     start.edge.remove();
-                    start.edge = [];
+                    start.edge = null;
                 }
                 edge = DRAG_TARGET.parent.addEdge(start, DRAG_SOURCE);
             }
@@ -876,21 +885,21 @@ function up(x, y) {
                 intersect = intersects[0];
                 start = intersect.object.object.children.output[0];
                 if (start.edge) {
-                    start.edge.end.edge = [];
+                    start.edge.end.edge = null;
                     if (start.edge.end.parent != start.edge.end.parent.parent.outputs
                         && start.edge.end.parent != start.edge.end.parent.parent.outputs)
                         start.edge.end.parent.removeArg(start.edge.end.arg_index);
                     start.edge.remove();
-                    start.edge = [];
+                    start.edge = null;
                 }
                 edge = DRAG_TARGET.parent.addEdge(start, DRAG_SOURCE);
             }
             else {
-                DRAG_SOURCE.edge = [];
+                DRAG_SOURCE.edge = null;
                 if (DRAG_SOURCE.parent.type == 'node') DRAG_SOURCE.parent.removeArg(DRAG_SOURCE.arg_index);
             }
         }
-        DRAG_TARGET.edge = [];
+        DRAG_TARGET.edge = null;
         DRAG_TARGET.remove();
         DRAG_EDGE.remove();
     }
@@ -989,8 +998,8 @@ function updateForces(scene) {
     // node repellent
     for (j = 0; j < scope.children.node.length; j++) {
       node = scope.children.node[j];
-      if (node != DRAG_OBJECT) for (var k = 0; k < scope.children.node.length; k++) if (k != j) {
-        sibling = scope.children.node[k];
+      if (node != DRAG_OBJECT) for (var l = 0; l < scope.children.node.length; l++) if (l != j) {
+        sibling = scope.children.node[l];
         dx = sibling.mesh.position.x - node.mesh.position.x;
         dy = sibling.mesh.position.y - node.mesh.position.y;
         if (dx == 0) dx = -1;
@@ -1005,16 +1014,16 @@ function updateForces(scene) {
     }
     for (j = 0; j < scope.children.node.length; j++) {
       node = scope.children.node[j];
-      if (Math.abs(node.mesh.position.x) + (node.width / 2.0) < SCOPE.width / 2.0)
+      if (Math.abs(node.mesh.position.x) + (node.width / 2.0) < scope.width / 2.0)
         node.mesh.position.x += node.force.x;
-      if (Math.abs(node.mesh.position.y) + (node.height / 2.0) < SCOPE.height / 2.0)
+      if (Math.abs(node.mesh.position.y) + (node.height / 2.0) < scope.height / 2.0)
         node.mesh.position.y += node.force.y
     }
   }
 }
 
 function render(scene) {
-  updateForces(scene)
+  //updateForces(scene);
   requestAnimationFrame(render);
   CONTROLS.update();
   RENDERER.render(SCENE.mesh, CAMERA);
@@ -1030,3 +1039,18 @@ var PLANE = SCENE.addPlane(0);
 
 var SCOPE = PLANE.addScope();
 SCOPE.setSize(200, 200);
+
+//var plane2 = SCENE.addPlane(2);
+//
+//var scope2 = plane2.addScope();
+//
+//var lambda = SCOPE.addNode('lambda');
+//lambda.addArg(null, 'arg1');
+//lambda.addArg(null, 'arg2');
+//
+//var arg1 = scope2.addNode('arg1');
+//arg1.addArg();
+//var arg2 = scope2.addNode('arg2');
+//arg2.addArg();
+//SCENE.addEdge(lambda.args[0], arg1.args[0]);
+//SCENE.addEdge(lambda.args[1], arg2.args[0]);

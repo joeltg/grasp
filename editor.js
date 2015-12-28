@@ -1,6 +1,7 @@
 var editor = ace.edit("editor");
 editor.setTheme("ace/theme/monokai");
 editor.getSession().setMode("ace/mode/clojure");
+editor.$blockScrolling = Infinity;
 editor.setOptions({
   enableBasicAutocompletion: true,
   enableSnippets: true,
