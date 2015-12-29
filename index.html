@@ -1,36 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>GRASP</title>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <link rel="stylesheet" type="text/css" media="screen" href="style.css">
-  </head>
-  <body>
-    <div id="control">
-      <input type="button" id="center" value="center"/>
-      <input type="button" id="clear" value="clear"/>
-      <input type="button" id="calculate" value="calculate"/>
-    </div>
-    <div id="content"></div>
-    <div id="editor"></div>
-    <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
-    <script src="ace/ext-language_tools.js" type="text/javascript" charset="utf-8"></script>
-    <script src="ace/keybinding-emacs.js" type="text/javascript" charset="utf-8"></script>
-    <script src="ace/paredit-bundle.js" type="text/javascript" charset="utf-8"></script>
-    <script src="ace/ace.improvements.js" type="text/javascript" charset="utf-8"></script>
-    <script src="ace/ace.ext.lang.codemarker.js" type="text/javascript" charset="utf-8"></script>
-    <script src="ace/ace.ext.lang.ast-commands.js" type="text/javascript" charset="utf-8"></script>
-    <script src="ace/ace.ext.keys.js" type="text/javascript" charset="utf-8"></script>
-    <script src="ace/ace.ext.lang.paredit.js" type="text/javascript" charset="utf-8"></script>
+    <head>
+        <title>GRASP</title>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link rel="stylesheet" type="text/css" media="screen" href="style.css">
+    </head>
+    <body>
+        <div id="control">
+            <input type="button" id="center" value="center"/>
+            <input type="button" id="clear" value="clear"/>
+            <input type="button" id="calculate" value="calculate"/>
+        </div>
+        <div id="content"></div>
+        <div id="editor"></div>
 
-    <script src="three/three.min.js" type="text/javascript" charset="utf-8"></script>
-    <script src="three/TrackballControls.js" type="text/javascript" charset="utf-8"></script>
-    <script src="three/droid_sans_regular.typeface.js" type="text/javascript" charset="utf-8"></script>
+        <script src="ace-builds-master/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
 
-    <script src="content.js" type="text/javascript" charset="utf-8"></script>
-    <script src="editor.js" type="text/javascript" charset="utf-8"></script>
-    <script src="app.js" type="text/javascript" charset="utf-8"></script>
-  </body>
+
+        <!--<script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>-->
+        <script src="ace/ext-language_tools.js" type="text/javascript" charset="utf-8"></script>
+        <!--<script src="ace/keybinding-emacs.js" type="text/javascript" charset="utf-8"></script>-->
+        <script src="ace/paredit-bundle.js" type="text/javascript" charset="utf-8"></script>
+        <script src="ace/ace.improvements.js" type="text/javascript" charset="utf-8"></script>
+        <script src="ace/ace.ext.lang.codemarker.js" type="text/javascript" charset="utf-8"></script>
+        <!--<script src="ace/ace.ext.lang.ast-commands.js" type="text/javascript" charset="utf-8"></script>-->
+        <script src="ace/ace.ext.keys.js" type="text/javascript" charset="utf-8"></script>
+        <script src="ace/ace.ext.lang.paredit.js" type="text/javascript" charset="utf-8"></script>
+
+
+        <script src="three/three.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="three/TrackballControls.js" type="text/javascript" charset="utf-8"></script>
+        <script src="three/droid_sans_regular.typeface.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="content.js" type="text/javascript" charset="utf-8"></script>
+        <script src="editor.js" type="text/javascript" charset="utf-8"></script>
+        <script src="app.js" type="text/javascript" charset="utf-8"></script>
+    </body>
 </html>
