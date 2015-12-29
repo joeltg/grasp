@@ -1,5 +1,4 @@
-"use strict";
-let editor = ace.edit("editor");
+var editor = ace.edit("editor");
 editor.setTheme("ace/theme/monokai");
 editor.getSession().setMode("ace/mode/scheme");
 editor.$blockScrolling = Infinity;

@@ -1,4 +1,3 @@
-"use strict";
 editor.getSession().on('change', function(e) {
   // e.type, etc
 
@@ -15,10 +14,10 @@ function center() {
     CONTROLS.target.set(0, 0, 0);
 }
 function clear() {
-    for (let i = 1; i < SCENE.children.plane.length; i++) {
+    for (var i = 1; i < SCENE.children.plane.length; i++) {
         SCENE.children.plane[i].remove();
     }
-    for (let i = 0; i < SCENE.children.edge.length; i++) {
+    for (var i = 0; i < SCENE.children.edge.length; i++) {
         SCENE.children.edge[i].remove();
     }
     SCOPE.remove();
@@ -27,17 +26,17 @@ function clear() {
 function calculate() {
     clear();
     //center();
-    let data = paredit.parse(editor.getValue());
+    var data = paredit.parse(editor.getValue());
     SCOPE.scope = {_parent: null};
-    for (let i = 0; i < data.children.length; i++) addTree(data.children[i], null, null, SCOPE, 1);
+    for (var i = 0; i < data.children.length; i++) addTree(data.children[i], null, null, SCOPE, 1);
 }
 
 function addTree(data, parent, index, scope, depth) {
     if (data.type == 'list') {
         if (data.children && data.children[0].type == 'symbol') {
-            let function_name = data.children[0].source;
-            let function_binding = find(function_name, scope.scope);
-            let node;
+            var function_name = data.children[0].source;
+            var function_binding = find(function_name, scope.scope);
+            var node;
 
             if (function_binding) {
                 // function is user-defined
@@ -56,8 +55,8 @@ function addTree(data, parent, index, scope, depth) {
                 node = scope.addNode(function_name);
             }
 
-            let x = Math.floor((Math.random() - 0.5) * scope.width);
-            let y = Math.floor((Math.random() - 0.5) * scope.height);
+            var x = Math.floor((Math.random() - 0.5) * scope.width);
+            var y = Math.floor((Math.random() - 0.5) * scope.height);
             node.setPosition(x, y);
             if (parent != null) {
                 parent.addArg(index);
@@ -65,13 +64,13 @@ function addTree(data, parent, index, scope, depth) {
             }
             if (data.children[0].source == 'lambda') {
                 node.setName('λ');
-                let args = data.children[1].children;
-                let plane = SCENE.children.plane.length <= depth ? SCENE.addPlane(depth) : SCENE.children.plane[depth];
-                let new_scope = plane.addScope();
+                var args = data.children[1].children;
+                var plane = SCENE.children.plane.length <= depth ? SCENE.addPlane(depth) : SCENE.children.plane[depth];
+                var new_scope = plane.addScope();
                 new_scope.scope = {_parent: scope.scope};
-                for (let i = 0; i < args.length; i++) {
-                    let symbol = args[i].source;
-                    let arg = new_scope.addNode(symbol);
+                for (var i = 0; i < args.length; i++) {
+                    var symbol = args[i].source;
+                    var arg = new_scope.addNode(symbol);
                     x = Math.floor((Math.random() - 0.5) * new_scope.width);
                     y = Math.floor((Math.random() - 0.5) * new_scope.height);
                     arg.setPosition(x, y);
@@ -79,8 +78,8 @@ function addTree(data, parent, index, scope, depth) {
                     new_scope.scope[symbol] = arg;
                     SCENE.addEdge(node.addArg(), arg.addArg());
                 }
-                let last_node;
-                for (let i = 2; i < data.children.length; i++)
+                var last_node;
+                for (var i = 2; i < data.children.length; i++)
                     last_node = addTree(data.children[i], null, null, new_scope, depth + 1);
                 SCENE.addEdge(node.addOutput(), last_node.children.output[0]);
             }
@@ -88,20 +87,20 @@ function addTree(data, parent, index, scope, depth) {
                 // TODO: check if symbol is already defined in the scope before making a new node
                 if (data.children[1].type == 'list') {
                     // function definition
-                    let lambda = scope.addNode('λ');
-                    let args = data.children[1].children;
-                    let symbol = args[0].source;
+                    var lambda = scope.addNode('λ');
+                    var args = data.children[1].children;
+                    var symbol = args[0].source;
                     node.setName(symbol);
                     node.removeOutput();
                     x = Math.floor((Math.random() - 0.5) * scope.width);
                     y = Math.floor((Math.random() - 0.5) * scope.height);
                     lambda.setPosition(x, y);
-                    let plane = SCENE.children.plane.length <= depth ? SCENE.addPlane(depth) : SCENE.children.plane[depth];
-                    let new_scope = plane.addScope();
+                    var plane = SCENE.children.plane.length <= depth ? SCENE.addPlane(depth) : SCENE.children.plane[depth];
+                    var new_scope = plane.addScope();
                     new_scope.scope = {_parent: scope.scope};
-                    for (let i = 1; i < args.length; i++) {
-                        let symbol = args[i].source;
-                        let arg = new_scope.addNode(symbol);
+                    for (var i = 1; i < args.length; i++) {
+                        var symbol = args[i].source;
+                        var arg = new_scope.addNode(symbol);
                         x = Math.floor((Math.random() - 0.5) * new_scope.width);
                         y = Math.floor((Math.random() - 0.5) * new_scope.height);
                         arg.setPosition(x, y);
@@ -109,8 +108,8 @@ function addTree(data, parent, index, scope, depth) {
                         new_scope.scope[symbol] = arg;
                         SCENE.addEdge(lambda.addArg(), arg.addArg());
                     }
-                    let last_node;
-                    for (let i = 2; i < data.children.length; i++)
+                    var last_node;
+                    for (var i = 2; i < data.children.length; i++)
                         last_node = addTree(data.children[i], null, null, new_scope, depth + 1);
                     SCENE.addEdge(lambda.addOutput(), last_node.children.output[0]);
                     scope.scope[args[0].source] = node;
@@ -118,14 +117,14 @@ function addTree(data, parent, index, scope, depth) {
                 }
                 else {
                     // variable binding
-                    let symbol = data.children[1].source;
+                    var symbol = data.children[1].source;
                     if (scope[symbol]) {
                         // this is just redefining an already-initialized variable
-                        let new_binding = data.children[2];
-                        let value = find(symbol, scope.scope);
+                        var new_binding = data.children[2];
+                        var value = find(symbol, scope.scope);
                         if (new_binding.type == 'list') {
                             // new value is expressions
-                            let new_value = addTree(new_binding, null, null, scope, depth);
+                            var new_value = addTree(new_binding, null, null, scope, depth);
                             if (value.parent == scope) {
                                 // reference in the same scope
                                 scope.addEdge(new_value.children.output[0], value.addArg());
@@ -147,7 +146,7 @@ function addTree(data, parent, index, scope, depth) {
                         node.setName(symbol);
                         node.removeOutput();
                         if (data.children.length > 2) {
-                            let value = data.children[2];
+                            var value = data.children[2];
                             if (value.type == 'list') {
                                 // init value is expression
                                 value = addTree(value, node, 0, scope, depth);
@@ -162,16 +161,16 @@ function addTree(data, parent, index, scope, depth) {
                 }
             }
             else if (data.children[0].source == 'let' || data.children[0].source == 'let*' || data.children[0].source == 'letrec') {
-                // let block
-                let bindings = data.children[1].children;
-                let plane = SCENE.children.plane.length <= depth ? SCENE.addPlane(depth) : SCENE.children.plane[depth];
-                let new_scope = plane.addScope();
+                // var block
+                var bindings = data.children[1].children;
+                var plane = SCENE.children.plane.length <= depth ? SCENE.addPlane(depth) : SCENE.children.plane[depth];
+                var new_scope = plane.addScope();
                 new_scope.scope = {_parent: scope.scope};
-                for (let i = 0; i < bindings.length; i++) {
-                    let binding = bindings[i];
-                    let symbol = binding.children[0];
-                    let value = binding.children[1];
-                    let arg = new_scope.addNode(symbol.source);
+                for (var i = 0; i < bindings.length; i++) {
+                    var binding = bindings[i];
+                    var symbol = binding.children[0];
+                    var value = binding.children[1];
+                    var arg = new_scope.addNode(symbol.source);
                     x = Math.floor((Math.random() - 0.5) * new_scope.width);
                     y = Math.floor((Math.random() - 0.5) * new_scope.height);
                     arg.setPosition(x, y);
@@ -188,19 +187,19 @@ function addTree(data, parent, index, scope, depth) {
                     }
                 }
                 //    SCENE.addEdge(node.addArg(), new_scope.addNode(args[i].source).addArg());
-                let last_node;
-                for (let i = 2; i < data.children.length; i++)
+                var last_node;
+                for (var i = 2; i < data.children.length; i++)
                     last_node = addTree(data.children[i], null, null, new_scope, depth + 1);
                 SCENE.addEdge(node.addOutput(), last_node.children.output[0]);
             }
             else if (data.children[0].source == 'set!') {
                 // set var
-                let symbol = data.children[1].source;
-                let new_binding = data.children[2];
-                let value = find(symbol, scope.scope);
+                var symbol = data.children[1].source;
+                var new_binding = data.children[2];
+                var value = find(symbol, scope.scope);
                 if (new_binding.type == 'list') {
                     // new value is expressions
-                    let new_value = addTree(new_binding, null, null, scope, depth);
+                    var new_value = addTree(new_binding, null, null, scope, depth);
                     if (value.parent == scope) {
                         // reference in the same scope
                         scope.addEdge(new_value.children.output[0], value.addArg());
@@ -217,7 +216,7 @@ function addTree(data, parent, index, scope, depth) {
                 node.remove();
                 return value;
             }
-            else for (let i = 1; i < data.children.length; i++) {
+            else for (var i = 1; i < data.children.length; i++) {
                 addTree(data.children[i], node, i - 1, scope, depth);
             }
             return node;
@@ -234,7 +233,7 @@ function addTree(data, parent, index, scope, depth) {
         }
         else {
             // atom
-            let value = find(data.source, scope.scope);
+            var value = find(data.source, scope.scope);
             if (value) {
                 // atom is binding
                 if (value.parent == scope) {

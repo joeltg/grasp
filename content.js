@@ -1,14 +1,13 @@
-"use strict";
-let SCENE, CAMERA, RENDERER, CONTROLS, CONTAINER, RAYCASTER, MOUSE, OFFSET = new THREE.Vector3();
-let ATOM_HEIGHT = 8, NODE_HEIGHT = 20, NODE_WIDTH = 10, NODE_PADDING = 10, INPUT_PADDING = 20, INPUT_ELEVATION = 1;
-let EDITOR_WIDTH = 400, NAVBAR_HEIGHT = 64, LEVEL_SPACING = 128;
+var SCENE, CAMERA, RENDERER, CONTROLS, CONTAINER, RAYCASTER, MOUSE, OFFSET = new THREE.Vector3();
+var ATOM_HEIGHT = 8, NODE_HEIGHT = 20, NODE_WIDTH = 10, NODE_PADDING = 10, INPUT_PADDING = 20, INPUT_ELEVATION = 1;
+var EDITOR_WIDTH = 400, NAVBAR_HEIGHT = 64, LEVEL_SPACING = 128;
 
-let DRAG_OBJECT, DRAG_EDGE, DRAG_SOURCE, DRAG_TARGET, DRAG_INPUT, DRAG_OUTPUT;
-let MIN_SCROLL = 64;
+var DRAG_OBJECT, DRAG_EDGE, DRAG_SOURCE, DRAG_TARGET, DRAG_INPUT, DRAG_OUTPUT;
+var MIN_SCROLL = 64;
 
-let OBJECTS = ['plane', 'scope', 'node', 'edge', 'output', 'input', 'text', 'atom'];
+var OBJECTS = ['plane', 'scope', 'node', 'edge', 'output', 'input', 'text', 'atom'];
 
-let COLORS = {
+var COLORS = {
     plane: '#ffffff',
     scope: '#ffffff',
     node: '#119955',
@@ -19,7 +18,7 @@ let COLORS = {
     atom: '#113355',
     highlight: '#ffff00'
 };
-let MATERIALS = {
+var MATERIALS = {
     plane: function() {return new THREE.MeshBasicMaterial({visible: false, color: COLORS.plane});},
     scope: function() {return new THREE.MeshPhongMaterial({color: COLORS.scope, shading: THREE.FlatShading, transparent: true, opacity: 0.5});},
     node: function() {return new THREE.MeshPhongMaterial({color: COLORS.node, shading: THREE.FlatShading, transparent: true, opacity: 1});},
@@ -29,48 +28,48 @@ let MATERIALS = {
     output: function() {return new THREE.MeshPhongMaterial({color: COLORS.output, shading: THREE.FlatShading, transparent: true, opacity: 1})},
     atom:  function() {return new THREE.MeshPhongMaterial({color: COLORS.atom, shading: THREE.FlatShading, transparent: true, opacity: 1})}
 };
-let GEOMETRIES = {
+var GEOMETRIES = {
     plane: function(params) {
         params = params || {};
-        let g = new THREE.PlaneGeometry(params.width || 1000, params.height || 1000, 1, 1);
+        var g = new THREE.PlaneGeometry(params.width || 1000, params.height || 1000, 1, 1);
         g.dynamic = true;
         return g;
     },
     scope: function(params) {
         params = params || {};
-        let points = [];
-        let w = params.width || 100;
-        let h = params.height || 100;
+        var points = [];
+        var w = params.width || 100;
+        var h = params.height || 100;
         points.push(new THREE.Vector2(- 0.5 * w, - 0.5 * h));
         points.push(new THREE.Vector2(- 0.5 * w, 0.5 * h));
         points.push(new THREE.Vector2(0.5 * w, 0.5 * h));
         points.push(new THREE.Vector2(0.5 * w, - 0.5 * h));
-        let shape = new THREE.Shape(points);
-        let settings = {amount: 1, bevelEnabled: false, steps: 1};
-        let g = new THREE.ExtrudeGeometry(shape, settings);
+        var shape = new THREE.Shape(points);
+        var settings = {amount: 1, bevelEnabled: false, steps: 1};
+        var g = new THREE.ExtrudeGeometry(shape, settings);
         g.width = w;
         g.height = h;
         g.dynamic = true;
         return g;
     },
     node: function(params) {
-        let points = [];
+        var points = [];
         params = params || {};
-        let w = params.width || NODE_HEIGHT;
-        let h = params.height || NODE_HEIGHT;
+        var w = params.width || NODE_HEIGHT;
+        var h = params.height || NODE_HEIGHT;
         points.push(new THREE.Vector2(- 0.5 * w, - 0.5 * h));
         points.push(new THREE.Vector2(- 0.5 * w, 0.5 * h));
         points.push(new THREE.Vector2(0.5 * w, 0.5 * h));
         points.push(new THREE.Vector2(0.5 * w, - 0.5 * h));
-        let shape = new THREE.Shape(points);
-        let settings = {amount: 5, bevelEnabled: false, steps: 1};
-        let g = new THREE.ExtrudeGeometry(shape, settings);
+        var shape = new THREE.Shape(points);
+        var settings = {amount: 5, bevelEnabled: false, steps: 1};
+        var g = new THREE.ExtrudeGeometry(shape, settings);
         g.width = w;
         g.height = h;
         return g;
     },
     edge: function() {
-        let getCurve = THREE.Curve.create(
+        var getCurve = THREE.Curve.create(
             function () {},
             function (t) {return new THREE.Vector3(0, t, 0);}
         );
@@ -78,8 +77,8 @@ let GEOMETRIES = {
     },
     text: function(params) {
         params = params || {};
-        let size = params.size || 10;
-        let g = new THREE.TextGeometry(params.name || " ", {font: "droid sans", height: 6, size: size, style: "normal"});
+        var size = params.size || 10;
+        var g = new THREE.TextGeometry(params.name || " ", {font: "droid sans", height: 6, size: size, style: "normal"});
         g.computeBoundingBox();
         g.width = g.boundingBox.max.x - g.boundingBox.min.x;
         g.applyMatrix(new THREE.Matrix4().makeTranslation(- g.width / 2.0, - size / 2.0, 0));
@@ -91,10 +90,10 @@ let GEOMETRIES = {
     output: function(params) {params = params || {radius: 5}; return new THREE.SphereGeometry(params.radius);},
     atom: function(params) {
         params = params || {};
-        let w = params.width || 10;
-        let h = params.height || ATOM_HEIGHT;
+        var w = params.width || 10;
+        var h = params.height || ATOM_HEIGHT;
 
-        let shape = new THREE.Shape();
+        var shape = new THREE.Shape();
 
         w = w / 2.0;
         h = h / 2.0;
@@ -105,8 +104,8 @@ let GEOMETRIES = {
         shape.lineTo(-w, -h);
         shape.absarc(-w, 0, h, 3 * Math.PI / 2, Math.PI / 2.0, true);
 
-        let settings = {amount: 5, bevelEnabled: false, steps: 1};
-        let geometry = new THREE.ExtrudeGeometry( shape, settings );
+        var settings = {amount: 5, bevelEnabled: false, steps: 1};
+        var geometry = new THREE.ExtrudeGeometry( shape, settings );
 
         geometry.dynamic = true;
 
@@ -122,25 +121,25 @@ function GRASPObject() {
             return;
         }
         this.parent.remove(this);
-        let siblings = this.parent.children[this.type];
+        var siblings = this.parent.children[this.type];
         siblings.splice(this.local_index, 1);
-        for (let i = this.local_index; i < siblings.length; i++) siblings[i].local_index = i;
+        for (var i = this.local_index; i < siblings.length; i++) siblings[i].local_index = i;
         while (this.mesh.children.length > 0) this.mesh.children[0].object.remove();
         this.mesh.geometry.dispose();
         this.mesh.parent.remove(this.mesh);
     };
     this.add = function(object, local_index, deep) {
         this.meshes[object.type].push(object.mesh);
-        for (let i = 0; i < OBJECTS.length; i++)
+        for (var i = 0; i < OBJECTS.length; i++)
             this.meshes[OBJECTS[i]].push.apply(this.meshes[OBJECTS[i]], object.meshes[OBJECTS[i]]);
         if (this.parent) this.parent.add(object, null, true);
         if (deep == true) return;
         object.parent = this;
-        let siblings = this.children[object.type];
+        var siblings = this.children[object.type];
         if (local_index != 0 && (!local_index || local_index < 0)) local_index = siblings.length;
         local_index = Math.max(siblings.length, local_index);
         siblings.splice(local_index, 0, object);
-        for (let i = local_index; i < siblings.length; i++) siblings[i].local_index = i;
+        for (var i = local_index; i < siblings.length; i++) siblings[i].local_index = i;
         this.mesh.add(object.mesh);
         return object;
     };
@@ -154,7 +153,7 @@ function GRASPObject() {
     }
     this.children = {};
     this.meshes = {};
-    for (let i = 0; i < OBJECTS.length; i++) {
+    for (var i = 0; i < OBJECTS.length; i++) {
         this.children[OBJECTS[i]] = [];
         this.meshes[OBJECTS[i]] = [];
     }
@@ -163,12 +162,12 @@ function GRASPObject() {
 
 function Scene() {
     this.addPlane = function(level) {
-        let plane = new Plane(level);
+        var plane = new Plane(level);
         this.add(plane);
         return plane;
     };
     this.addEdge = function(start, end) {
-        let edge = new Edge(start, end, true);
+        var edge = new Edge(start, end, true);
         edge.trans_plane = true;
         this.add(edge);
         edge.update();
@@ -181,8 +180,8 @@ function Scene() {
     this.mesh.fog = new THREE.FogExp2(0xcccccc, 0.001);
     RENDERER = new THREE.WebGLRenderer();
     RENDERER.setClearColor(this.mesh.fog.color);
-    let width = window.innerWidth;
-    let height = window.innerHeight;
+    var width = window.innerWidth;
+    var height = window.innerHeight;
     //width -= 3;
     //height -= 3;
     RENDERER.setPixelRatio((width - EDITOR_WIDTH) / (height - NAVBAR_HEIGHT));
@@ -216,12 +215,12 @@ function Scene() {
     RENDERER.domElement.addEventListener( 'mousewheel', onMouseScroll, false );
 
     // light
-    let light = new THREE.DirectionalLight(0xffffff, 1);
+    var light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(0.2, 0.2, 1);
     light.castShadow = true;
     light.shadowMapWidth = 2048;
     light.shadowMapHeight = 2048;
-    let d = 50;
+    var d = 50;
     light.shadowCameraLeft = -d;
     light.shadowCameraRight = d;
     light.shadowCameraTop = d;
@@ -235,14 +234,14 @@ function Scene() {
 
 function Plane(level) {
     this.addScope = function() {
-        let scope = new Scope();
+        var scope = new Scope();
         this.add(scope);
         return scope;
     };
     this.setSize = function(width, height) {
-        let g = this.mesh.geometry;
-        for (let i = 0; i < this.mesh.geometry.vertices.length; i++) {
-            let vertex = this.mesh.geometry.vertices[i];
+        var g = this.mesh.geometry;
+        for (var i = 0; i < this.mesh.geometry.vertices.length; i++) {
+            var vertex = this.mesh.geometry.vertices[i];
             vertex.x = (vertex.x < 0 ? -1 : 1) * width / 2.0;
             vertex.y = (vertex.y < 0 ? -1 : 1) * height / 2.0;
         }
@@ -270,26 +269,26 @@ function Scope() {
     this.addNode = function(name) { return this.add(new Node(name)); };
     this.addEdge = function(start, end) { return this.add(new Edge(start, end)); };
     this.updateLinks = function() {
-        //for (let i = 0; i < this.children.node.length; i++)
-        //    for (let j = 0; j < this.children.node[i].edge.length; j++)
+        //for (var i = 0; i < this.children.node.length; i++)
+        //    for (var j = 0; j < this.children.node[i].edge.length; j++)
         //        this.children.node[i].edge[j].update();
         //    //if (this.children.node[i].edge) this.children.node[i].edge.update();
         // TODO: implement cross-scope link updating here
     };
     this.updateSize = function() {
-        let min = this.children.node.length * 50;
+        var min = this.children.node.length * 50;
         this.min_height = min;
         this.min_width = min;
 
-        let width = Math.max(this.width, this.min_width);
-        let height = Math.max(this.height, this.min_height);
+        var width = Math.max(this.width, this.min_width);
+        var height = Math.max(this.height, this.min_height);
 
         this.setSize(width, height);
     };
     this.setSize = function(width, height) {
-        let g = this.mesh.geometry;
-        for (let i = 0; i < this.mesh.geometry.vertices.length; i++) {
-            let vertex = this.mesh.geometry.vertices[i];
+        var g = this.mesh.geometry;
+        for (var i = 0; i < this.mesh.geometry.vertices.length; i++) {
+            var vertex = this.mesh.geometry.vertices[i];
             vertex.x = (vertex.x < 0 ? -1 : 1) * width / 2.0;
             vertex.y = (vertex.y < 0 ? -1 : 1) * height / 2.0;
         }
@@ -323,7 +322,7 @@ function Node(name) {
         this.updateSize(null, NODE_HEIGHT);
     };
     this.addArg = function(index, value) {
-        let local_index, arg;
+        var local_index, arg;
         if (value) {
             local_index = this.children.atom.length;
             arg = this.add(new Atom(value), local_index);
@@ -336,7 +335,7 @@ function Node(name) {
         arg.arg_index = index;
         arg.local_index = local_index;
         this.args.splice(index, 0, arg);
-        for (let i = local_index; i < this.args.length; i++) this.args[i].arg_index = i;
+        for (var i = local_index; i < this.args.length; i++) this.args[i].arg_index = i;
         this.updateSize();
         this.updateArgs();
         return arg;
@@ -344,16 +343,16 @@ function Node(name) {
     this.removeArg = function(index) {
         if (!index && index != 0) index = this.args.length - 1;
         if (index < 0) return false;
-        let arg = this.args[index];
+        var arg = this.args[index];
         this.args.splice(index, 1);
-        for (let i = index; i < this.args.length; i++) this.args[i].arg_index = i;
+        for (var i = index; i < this.args.length; i++) this.args[i].arg_index = i;
         arg.remove();
         this.updateSize();
         this.updateArgs();
         return true;
     };
     this.addOutput = function(index) {
-        let output = new Output();
+        var output = new Output();
         this.add(output, index);
         this.updateSize();
         this.updateOutputs();
@@ -373,12 +372,12 @@ function Node(name) {
     this.updateSize = function(width, height) {
         this.output_width = ((this.children.output.length || 1) - 1) * INPUT_PADDING;
         this.input_width = ((this.args.length || 1) - 1) * INPUT_PADDING;
-        for (let i = 0; i < this.children.atom.length; i++) this.input_width += this.children.atom[i].width;
+        for (var i = 0; i < this.children.atom.length; i++) this.input_width += this.children.atom[i].width;
         if (!width && width != 0) width = Math.max(this.text_width, this.input_width, this.output_width, 10);
         if (!height && height != 0) height = NODE_HEIGHT;
         width = width + NODE_PADDING;
-        if ((width != this.width) || (height != this.height)) for (let i = 0; i < this.mesh.geometry.vertices.length; i++) {
-            let vertex = this.mesh.geometry.vertices[i];
+        if ((width != this.width) || (height != this.height)) for (var i = 0; i < this.mesh.geometry.vertices.length; i++) {
+            var vertex = this.mesh.geometry.vertices[i];
             vertex.x = (vertex.x < 0 ? -1 : 1) * width / 2.0;
             vertex.y = (vertex.y < 0 ? -1 : 1) * height / 2.0;
             vertex.z = width == 0 ? (vertex.z == 0 ? 0 : 1) : (vertex.z == 0 ? 0 : 5);
@@ -388,34 +387,34 @@ function Node(name) {
         this.height = height;
     };
     this.updateArgs = function() {
-        let position = -this.input_width / 2.0;
-        for (let i = 0; i < this.args.length; i++) {
-            let arg = this.args[i];
+        var position = -this.input_width / 2.0;
+        for (var i = 0; i < this.args.length; i++) {
+            var arg = this.args[i];
             position += (arg.width || 0) / 2.0;
             arg.setPosition(position, this.height / 2.0, INPUT_ELEVATION);
             position += INPUT_PADDING + ((arg.width || 0) / 2.0);
-            if (arg.edge) for (let j = 0; j < arg.edge.length; j++)
+            if (arg.edge) for (var j = 0; j < arg.edge.length; j++)
                 arg.edge[j].update();
             //if (arg.edge) arg.edge.update();
         }
     };
     this.updateOutputs = function() {
-        let length = this.children.output.length;
-        for (let i = 0; i < length; i++) {
-            let output = this.children.output[i];
+        var length = this.children.output.length;
+        for (var i = 0; i < length; i++) {
+            var output = this.children.output[i];
             output.setPosition(INPUT_PADDING * (i - ((length - 1) / 2.0)), - this.height / 2.0, INPUT_ELEVATION);
-            for (let j = 0; j < output.edge.length; j++)
+            for (var j = 0; j < output.edge.length; j++)
                 output.edge[j].update();
             //if (output.edge) output.edge.update();
         }
     };
     this.updateLinks = function() {
-        for (let i = 0; i < this.children.input.length; i++)
-            for (let j = 0; j < this.children.input[i].edge.length; j++)
+        for (var i = 0; i < this.children.input.length; i++)
+            for (var j = 0; j < this.children.input[i].edge.length; j++)
                 this.children.input[i].edge[j].update();
             //if (this.children.input[i].edge) this.children.input[i].edge.update();
-        for (let i = 0; i < this.children.output.length; i++)
-            for (let j = 0; j < this.children.output[i].edge.length; j++)
+        for (var i = 0; i < this.children.output.length; i++)
+            for (var j = 0; j < this.children.output[i].edge.length; j++)
                 this.children.output[i].edge[j].update();
             //if (this.children.output[i].edge) this.children.output[i].edge.update();
     };
@@ -432,7 +431,7 @@ function Node(name) {
     }
     else {
         this.name = name;
-        let text = new Text(String(name));
+        var text = new Text(String(name));
         this.add(text);
         this.text_width = text.width;
     }
@@ -443,9 +442,9 @@ function Node(name) {
 
 function Edge(start, end) {
     this.update = function() {
-        let direction, length;
-        let start, end;
-        let axis, angle;
+        var direction, length;
+        var start, end;
+        var axis, angle;
         if (this.parent && this.parent.type == 'scene') {
             start = this.start.mesh.position.clone(); // arg
             start.add(this.start.mesh.parent.position); // node or scope
@@ -466,7 +465,7 @@ function Edge(start, end) {
             this.length = length;
             this.mesh.scale.set(1, length * 1.15, 1);
 
-            let yaxis = new THREE.Vector3(0, 1, 0);
+            var yaxis = new THREE.Vector3(0, 1, 0);
             axis = end.clone().sub(start);
             angle = yaxis.angleTo(axis);
             axis.cross(yaxis).normalize();
@@ -535,7 +534,7 @@ function Atom(value) {
     };
     this.type = 'atom';
     this.edge = [];
-    let text = new Text(String(value), 6);
+    var text = new Text(String(value), 6);
     this.width = text.width;
     this.height = ATOM_HEIGHT;
     this.params = {width: this.width};
@@ -551,7 +550,7 @@ function Text(text, size) {
         console.log('setting text to', text);
         if (text) this.value = text;
         this.mesh.geometry.dispose();
-        let geo = GEOMETRIES.text(text);
+        var geo = GEOMETRIES.text(text);
         geo.verticesNeedUpdate = true;
         console.log(geo);
         this.mesh.geometry = geo;
@@ -575,8 +574,8 @@ function down(x, y) {
     MOUSE.x = ((x - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
     MOUSE.y = - ((y - NAVBAR_HEIGHT) / (window.innerHeight - NAVBAR_HEIGHT)) * 2 + 1;
     RAYCASTER.setFromCamera(MOUSE, CAMERA);
-    let intersects, intersect;
-    let plane, scope;
+    var intersects, intersect;
+    var plane, scope;
     /*
     intersects = RAYCASTER.intersectObjects(SCENE.meshes.input);
     if (intersects.length > 0) {
@@ -679,8 +678,8 @@ function move(x, y, dragging) {
     MOUSE.x = ((x - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
     MOUSE.y = - ((y - NAVBAR_HEIGHT) / (window.innerHeight - NAVBAR_HEIGHT)) * 2 + 1;
     RAYCASTER.setFromCamera(MOUSE, CAMERA);
-    let intersects, intersect;
-    let i, j;
+    var intersects, intersect;
+    var i, j;
     if (dragging && DRAG_OBJECT) {
         intersects = RAYCASTER.intersectObject(DRAG_OBJECT.parent.mesh);
         if (intersects.length > 0) {
@@ -690,7 +689,7 @@ function move(x, y, dragging) {
 
             x = 0;
             y = 0;
-            let compensation;
+            var compensation;
 
             if (DRAG_OBJECT.mesh.position.x + (DRAG_OBJECT.width / 2.0) > DRAG_OBJECT.parent.width / 2.0) x = 1;
             else if (DRAG_OBJECT.mesh.position.x - (DRAG_OBJECT.width / 2.0) < -DRAG_OBJECT.parent.width / 2.0) x = -1;
@@ -767,7 +766,7 @@ function move(x, y, dragging) {
             intersects = RAYCASTER.intersectObjects(DRAG_TARGET.parent.meshes.node);
             if (intersects.length > 0 && intersects[0].object.object != DRAG_SOURCE.parent) {
                 intersect = intersects[0];
-                let output = intersect.object.object.children.output[0];
+                var output = intersect.object.object.children.output[0];
                 DRAG_TARGET.mesh.position.addVectors(output.mesh.position, output.parent.mesh.position);
                 DRAG_EDGE.update(false);
                 return;
@@ -788,10 +787,10 @@ function move(x, y, dragging) {
 function up(x, y) {
     /*
     if (DRAG_EDGE) {
-        let intersects, intersect, edge;
+        var intersects, intersect, edge;
 
         if (DRAG_TARGET.type == 'input') {
-            let end;
+            var end;
             intersects = RAYCASTER.intersectObjects(DRAG_TARGET.parent.meshes.input);
             if (intersects.length > 1 && intersects[0].object.object.parent != DRAG_SOURCE.parent) {
                 intersect = intersects[0].object.object == DRAG_TARGET ? intersects[1] : intersects[0];
@@ -810,7 +809,7 @@ function up(x, y) {
             else DRAG_SOURCE.edge = [];
         }
         else if (DRAG_TARGET.type == 'output') {
-            let start;
+            var start;
             intersects = RAYCASTER.intersectObjects(DRAG_TARGET.parent.meshes.output);
             if (intersects.length > 1 && intersects[0].object.object.parent != DRAG_SOURCE.parent) {
                 intersect = intersects[0].object.object == DRAG_TARGET ? intersects[1] : intersects[0];
@@ -869,9 +868,9 @@ function center() {
     CONTROLS.target.set(0, 0, 0);
 }
 function distance(v1, v2) {
-    let dx = v1.x - v2.x;
-    let dy = v1.y - v2.y;
-    let dz = v1.z - v2.z;
+    var dx = v1.x - v2.x;
+    var dy = v1.y - v2.y;
+    var dz = v1.z - v2.z;
     return Math.sqrt(dx*dx+dy*dy+dz*dz);
 }
 function onTouchStart(event) {
@@ -909,17 +908,17 @@ function onMouseScroll(event) {
 }
 
 function updateForces(scene) {
-    let k = 0.01;
-    let repellent = -1000;
-    let dx, dy, start, end, startNode, endNode, scale, v, distance;
-    if (scene) for (let i = 0; i < SCENE.children.edge.length; i++)
+    var k = 0.01;
+    var repellent = -1000;
+    var dx, dy, start, end, startNode, endNode, scale, v, distance;
+    if (scene) for (var i = 0; i < SCENE.children.edge.length; i++)
         SCENE.children.edge[i].update();
-  if (SCENE) for (let i = 0; i < SCENE.meshes.scope.length; i++) {
-    let scope = SCENE.meshes.scope[i].object;
-    for (let j = 0; j < scope.children.node.length; j++)
+  if (SCENE) for (var i = 0; i < SCENE.meshes.scope.length; i++) {
+    var scope = SCENE.meshes.scope[i].object;
+    for (var j = 0; j < scope.children.node.length; j++)
       scope.children.node[j].force = new THREE.Vector2();
-    for (let j = 0; j < scope.children.edge.length; j++) {
-      let edge = scope.children.edge[j];
+    for (var j = 0; j < scope.children.edge.length; j++) {
+      var edge = scope.children.edge[j];
       edge.update();
       if (edge.start && edge.end) {
         start = null; end = null;
@@ -949,11 +948,11 @@ function updateForces(scene) {
         }
       }
     }
-    let node, sibling;
+    var node, sibling;
     // node repellent
-    for (let j = 0; j < scope.children.node.length; j++) {
+    for (var j = 0; j < scope.children.node.length; j++) {
       node = scope.children.node[j];
-      if (node != DRAG_OBJECT) for (let l = 0; l < scope.children.node.length; l++) if (l != j) {
+      if (node != DRAG_OBJECT) for (var l = 0; l < scope.children.node.length; l++) if (l != j) {
         sibling = scope.children.node[l];
         dx = sibling.mesh.position.x - node.mesh.position.x;
         dy = sibling.mesh.position.y - node.mesh.position.y;
@@ -967,7 +966,7 @@ function updateForces(scene) {
         node.force.add(v);
       }
     }
-    for (let j = 0; j < scope.children.node.length; j++) {
+    for (var j = 0; j < scope.children.node.length; j++) {
       node = scope.children.node[j];
       if (Math.abs(node.mesh.position.x) + (node.width / 2.0) < scope.width / 2.0)
         node.mesh.position.x += node.force.x;
@@ -978,18 +977,18 @@ function updateForces(scene) {
 }
 
 function updateRealForces(scene) {
-    let spring_constant = 0.01;
-    let node_repellent = -1000;
-    let node, sibling;
-    let dx, dy, start, end, startNode, endNode, scale, v, distance;
+    var spring_constant = 0.01;
+    var node_repellent = -1000;
+    var node, sibling;
+    var dx, dy, start, end, startNode, endNode, scale, v, distance;
 
-    if (scene) for (let i = 0; i < SCENE.meshes.scope.length; i++) {
-        let scope = SCENE.meshes.scope[i].object;
-        for (let j = 0; j < scope.children.node.length; j++)
+    if (scene) for (var i = 0; i < SCENE.meshes.scope.length; i++) {
+        var scope = SCENE.meshes.scope[i].object;
+        for (var j = 0; j < scope.children.node.length; j++)
             scope.children.node[j].force = new THREE.Vector2(0, 0);
-        for (let j = 0; j < scope.children.node.length; j++) {
+        for (var j = 0; j < scope.children.node.length; j++) {
             if (scope.children.node[j] != DRAG_OBJECT) {
-                for (let k = 0; k < scope.children.node.length; k++) {
+                for (var k = 0; k < scope.children.node.length; k++) {
                     if (scope.children.node[k] != DRAG_OBJECT) {
                         if (k != j) {
                             node = scope.children.node[j];
@@ -1006,15 +1005,15 @@ function updateRealForces(scene) {
                             v.setLength(scale);
                             node.force.add(v);
 
-                            for (let l = 0; l < node.children.output; l++) {
-                                for (let m = 0; m < node.children.output[l].edge.length; m++)
+                            for (var l = 0; l < node.children.output; l++) {
+                                for (var m = 0; m < node.children.output[l].edge.length; m++)
                                     node.children.output[l].edge[m].update();
                                 //if (node.children.output[l].edge) {
                                 //    node.children.output[l].edge.update();
                                 //}
                             }
-                            for (let l = 0; l < node.args; l++) {
-                                for (let m = 0; m < node.args[l].edge.length; m++)
+                            for (var l = 0; l < node.args; l++) {
+                                for (var m = 0; m < node.args[l].edge.length; m++)
                                     node.args[l].edge[m].update();
                                 //if (node.args[l].edge) {
                                 //    node.args[l].edge.update();
@@ -1040,23 +1039,23 @@ SCENE = new Scene();
 render(SCENE);
 
 
-let PLANE = SCENE.addPlane(0);
+var PLANE = SCENE.addPlane(0);
 
 
-let SCOPE = PLANE.addScope();
+var SCOPE = PLANE.addScope();
 SCOPE.setSize(200, 200);
 
-//let plane2 = SCENE.addPlane(2);
+//var plane2 = SCENE.addPlane(2);
 //
-//let scope2 = plane2.addScope();
+//var scope2 = plane2.addScope();
 //
-//let lambda = SCOPE.addNode('lambda');
+//var lambda = SCOPE.addNode('lambda');
 //lambda.addArg(null, 'arg1');
 //lambda.addArg(null, 'arg2');
 //
-//let arg1 = scope2.addNode('arg1');
+//var arg1 = scope2.addNode('arg1');
 //arg1.addArg();
-//let arg2 = scope2.addNode('arg2');
+//var arg2 = scope2.addNode('arg2');
 //arg2.addArg();
 //SCENE.addEdge(lambda.args[0], arg1.args[0]);
 //SCENE.addEdge(lambda.args[1], arg2.args[0]);
