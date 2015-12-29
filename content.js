@@ -191,7 +191,7 @@ function Scene() {
     CAMERA = new THREE.PerspectiveCamera(60, (window.innerWidth - EDITOR_WIDTH) / (window.innerHeight - NAVBAR_HEIGHT), 1, 10000);
     CAMERA.position.z = 500;
     //CONTROLS = new THREE.TrackballControls(CAMERA);
-    CONTROLS = {update() {}};
+    CONTROLS = {update: function() {}};
     CONTROLS.noZoom = false;
     CONTROLS.noPan = false;
 
