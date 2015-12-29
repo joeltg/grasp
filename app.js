@@ -85,11 +85,13 @@ function addTree(data, parent, index, scope, depth) {
                 SCENE.addEdge(node.addOutput(), last_node.children.output[0]);
             }
             else if (data.children[0].source == 'define') {
+                // TODO: check if symbol is already defined in the scope before making a new node
                 if (data.children[1].type == 'list') {
                     // function definition
                     let lambda = scope.addNode('λ');
                     let args = data.children[1].children;
-                    node.setName(args[0].source);
+                    let symbol = args[0].source;
+                    node.setName(symbol);
                     node.removeOutput();
                     x = Math.floor((Math.random() - 0.5) * scope.width);
                     y = Math.floor((Math.random() - 0.5) * scope.height);
@@ -116,22 +118,47 @@ function addTree(data, parent, index, scope, depth) {
                 }
                 else {
                     // variable binding
-                    // TODO: implement this
                     let symbol = data.children[1].source;
-                    node.setName(symbol);
-                    node.removeOutput();
-                    if (data.children.length > 2) {
-                        let value = data.children[2];
-                        if (value.type == 'list') {
-                            // init value is expression
-                            value = addTree(value, node, 0, scope, depth);
+                    if (scope[symbol]) {
+                        // this is just redefining an already-initialized variable
+                        let new_binding = data.children[2];
+                        let value = find(symbol, scope.scope);
+                        if (new_binding.type == 'list') {
+                            // new value is expressions
+                            let new_value = addTree(new_binding, null, null, scope, depth);
+                            if (value.parent == scope) {
+                                // reference in the same scope
+                                scope.addEdge(new_value.children.output[0], value.addArg());
+                            }
+                            else {
+                                // reference in a previous scope
+                                SCENE.addEdge(new_value.children.output[0], value.addArg());
+                            }
                         }
                         else {
-                            // init value is atom
-                            node.addArg(null, value.source);
+                            // new value is atom
+                            value.addArg(null, new_binding.source);
                         }
+                        node.remove();
+                        return value;
                     }
-                    scope.scope[symbol] = node;
+                    else {
+                        // this is a new variable binding
+                        node.setName(symbol);
+                        node.removeOutput();
+                        if (data.children.length > 2) {
+                            let value = data.children[2];
+                            if (value.type == 'list') {
+                                // init value is expression
+                                value = addTree(value, node, 0, scope, depth);
+                            }
+                            else {
+                                // init value is atom
+                                node.addArg(null, value.source);
+                            }
+                        }
+                        scope.scope[symbol] = node;
+                    }
                 }
             }
             else if (data.children[0].source == 'let' || data.children[0].source == 'let*' || data.children[0].source == 'letrec') {
@@ -168,7 +195,6 @@ function addTree(data, parent, index, scope, depth) {
             }
             else if (data.children[0].source == 'set!') {
                 // set var
-                console.log('setting var');
                 let symbol = data.children[1].source;
                 let new_binding = data.children[2];
                 let value = find(symbol, scope.scope);
@@ -189,7 +215,7 @@ function addTree(data, parent, index, scope, depth) {
                     value.addArg(null, new_binding.source);
                 }
                 node.remove();
-                return null;
+                return value;
             }
             else for (let i = 1; i < data.children.length; i++) {
                 addTree(data.children[i], node, i - 1, scope, depth);

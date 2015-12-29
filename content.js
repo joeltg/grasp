@@ -572,6 +572,9 @@ function Label(name) {
 // TODO: add event handler for exception
 
 function down(x, y) {
+    MOUSE.x = ((x - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
+    MOUSE.y = - ((y - NAVBAR_HEIGHT) / (window.innerHeight - NAVBAR_HEIGHT)) * 2 + 1;
+    RAYCASTER.setFromCamera(MOUSE, CAMERA);
     let intersects, intersect;
     let plane, scope;
     /*
@@ -881,7 +884,7 @@ function onTouchMove(event) {
 }
 function onTouchEnd(event) {
     event.preventDefault();
-    up(event.touches[0].clientX, event.touches[0].clientY);
+    up(null, null);
 }
 function onTouchCancel(event) {
     event.preventDefault();
