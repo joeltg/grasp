@@ -1,7 +1,7 @@
 "use strict";
 let SCENE, CAMERA, RENDERER, CONTROLS, CONTAINER, RAYCASTER, MOUSE, OFFSET = new THREE.Vector3();
 let ATOM_HEIGHT = 8, NODE_HEIGHT = 20, NODE_WIDTH = 10, NODE_PADDING = 10, INPUT_PADDING = 20, INPUT_ELEVATION = 1;
-let EDITOR_WIDTH = 400, LEVEL_SPACING = 128;
+let EDITOR_WIDTH = 400, NAVBAR_HEIGHT = 64, LEVEL_SPACING = 128;
 
 let DRAG_OBJECT, DRAG_EDGE, DRAG_SOURCE, DRAG_TARGET, DRAG_INPUT, DRAG_OUTPUT;
 let MIN_SCROLL = 64;
@@ -183,13 +183,13 @@ function Scene() {
     RENDERER.setClearColor(this.mesh.fog.color);
     let width = window.innerWidth;
     let height = window.innerHeight;
-    width -= 3;
-    height -= 3;
-    RENDERER.setPixelRatio((width - EDITOR_WIDTH) / height);
-    RENDERER.setSize(width - EDITOR_WIDTH, height);
+    //width -= 3;
+    //height -= 3;
+    RENDERER.setPixelRatio((width - EDITOR_WIDTH) / (height - NAVBAR_HEIGHT));
+    RENDERER.setSize(width - EDITOR_WIDTH, (height - NAVBAR_HEIGHT));
     CONTAINER = document.getElementById('content');
     CONTAINER.appendChild(RENDERER.domElement);
-    CAMERA = new THREE.PerspectiveCamera(60, (window.innerWidth - EDITOR_WIDTH) / window.innerHeight, 1, 10000);
+    CAMERA = new THREE.PerspectiveCamera(60, (window.innerWidth - EDITOR_WIDTH) / (window.innerHeight - NAVBAR_HEIGHT), 1, 10000);
     CAMERA.position.z = 500;
     //CONTROLS = new THREE.TrackballControls(CAMERA);
     CONTROLS = {update() {}};
@@ -202,9 +202,9 @@ function Scene() {
 
     // mouse and resize listeners
     window.addEventListener('resize', function () {
-        CAMERA.aspect = (window.innerWidth - EDITOR_WIDTH) / window.innerHeight;
+        CAMERA.aspect = (window.innerWidth - EDITOR_WIDTH) / (window.innerHeight - NAVBAR_HEIGHT);
         CAMERA.updateProjectionMatrix();
-        RENDERER.setSize(window.innerWidth - EDITOR_WIDTH, window.innerHeight);
+        RENDERER.setSize(window.innerWidth - EDITOR_WIDTH, (window.innerHeight - NAVBAR_HEIGHT));
     }, false);
     RENDERER.domElement.addEventListener("touchstart", onTouchStart, false);
     RENDERER.domElement.addEventListener("touchend", onTouchEnd, false);
@@ -674,7 +674,7 @@ function down(x, y) {
 
 function move(x, y, dragging) {
     MOUSE.x = ((x - EDITOR_WIDTH) / (window.innerWidth - EDITOR_WIDTH)) * 2 - 1;
-    MOUSE.y = - (y / window.innerHeight) * 2 + 1;
+    MOUSE.y = - ((y - NAVBAR_HEIGHT) / (window.innerHeight - NAVBAR_HEIGHT)) * 2 + 1;
     RAYCASTER.setFromCamera(MOUSE, CAMERA);
     let intersects, intersect;
     let i, j;

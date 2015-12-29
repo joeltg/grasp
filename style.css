@@ -12,7 +12,7 @@ html, body {
 #editor {
     position: absolute;
     margin: 0;
-    top: 0;
+    top: 64px;
     bottom: 0;
     left: 0;
     width: 400px;
@@ -20,11 +20,10 @@ html, body {
 #content {
     position: absolute;
     margin: 0;
-    top: 0;
+    top: 64px;
     right: 0;
     bottom: 0;
     left: 400px;
-    height: 100%;
 }
 .ace-syntax-error {
   position: absolute;

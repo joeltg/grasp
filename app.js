@@ -166,6 +166,31 @@ function addTree(data, parent, index, scope, depth) {
                     last_node = addTree(data.children[i], null, null, new_scope, depth + 1);
                 SCENE.addEdge(node.addOutput(), last_node.children.output[0]);
             }
+            else if (data.children[0].source == 'set!') {
+                // set var
+                console.log('setting var');
+                let symbol = data.children[1].source;
+                let new_binding = data.children[2];
+                let value = find(symbol, scope.scope);
+                if (new_binding.type == 'list') {
+                    // new value is expressions
+                    let new_value = addTree(new_binding, null, null, scope, depth);
+                    if (value.parent == scope) {
+                        // reference in the same scope
+                        scope.addEdge(new_value.children.output[0], value.addArg());
+                    }
+                    else {
+                        // reference in a previous scope
+                        SCENE.addEdge(new_value.children.output[0], value.addArg());
+                    }
+                }
+                else {
+                    // new value is atom
+                    value.addArg(null, new_binding.source);
+                }
+                node.remove();
+                return null;
+            }
             else for (let i = 1; i < data.children.length; i++) {
                 addTree(data.children[i], node, i - 1, scope, depth);
             }

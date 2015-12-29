@@ -6,18 +6,51 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
         <link rel="stylesheet" type="text/css" media="screen" href="style.css">
+
+        <link rel="stylesheet" href="https://storage.googleapis.com/code.getmdl.io/1.0.6/material.indigo-pink.min.css">
+        <script src="https://storage.googleapis.com/code.getmdl.io/1.0.6/material.min.js"></script>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     </head>
     <body>
-        <div id="control">
-            <input type="button" id="center" value="center"/>
-            <input type="button" id="clear" value="clear"/>
-            <input type="button" id="calculate" value="calculate"/>
+        <!-- Always shows a header, even in smaller screens. -->
+        <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+            <header class="mdl-layout__header">
+                <div class="mdl-layout__header-row">
+                    <!-- Title -->
+                    <span class="mdl-layout-title">GRASP</span>
+                    <!-- Add spacer, to align navigation to the right -->
+                    <div class="mdl-layout-spacer"></div>
+                    <!-- Navigation. We hide it in small screens. -->
+                    <nav class="mdl-navigation mdl-layout--large-screen-only">
+                        <button id="center" style="color: white" class="mdl-button mdl-js-button mdl-js-ripple-effect">
+                            Center
+                        </button>
+                        <button id="clear" style="color: white" class="mdl-button mdl-js-button mdl-js-ripple-effect">
+                            Clear
+                        </button>
+                        <button id="calculate" style="color: white" class="mdl-button mdl-js-button mdl-js-ripple-effect">
+                            Calculate
+                        </button>
+
+                    </nav>
+                </div>
+            </header>
+            <div class="mdl-layout__drawer">
+                <span class="mdl-layout-title">GRASP</span>
+                <nav class="mdl-navigation">
+                    <a class="mdl-navigation__link" href="http://github.com/joeltg/grasp">GitHub</a>
+                    <a class="mdl-navigation__link" href="/">Home</a>
+                </nav>
+            </div>
+            <main class="mdl-layout__content">
+                <div class="page-content">
+                    <div id="content"></div>
+                    <div id="editor"></div>
+                </div>
+            </main>
         </div>
-        <div id="content"></div>
-        <div id="editor"></div>
 
         <!--<script src="ace-builds-master/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>-->
-
 
         <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
         <script src="ace/ext-language_tools.js" type="text/javascript" charset="utf-8"></script>
