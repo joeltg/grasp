@@ -72,6 +72,9 @@ function addTree(data, parent, index, scope, depth) {
                 for (let i = 0; i < args.length; i++) {
                     let symbol = args[i].source;
                     let arg = new_scope.addNode(symbol);
+                    x = Math.floor((Math.random() - 0.5) * new_scope.width);
+                    y = Math.floor((Math.random() - 0.5) * new_scope.height);
+                    arg.setPosition(x, y);
                     arg.removeOutput();
                     new_scope.scope[symbol] = arg;
                     SCENE.addEdge(node.addArg(), arg.addArg());
@@ -97,6 +100,9 @@ function addTree(data, parent, index, scope, depth) {
                     for (let i = 1; i < args.length; i++) {
                         let symbol = args[i].source;
                         let arg = new_scope.addNode(symbol);
+                        x = Math.floor((Math.random() - 0.5) * new_scope.width);
+                        y = Math.floor((Math.random() - 0.5) * new_scope.height);
+                        arg.setPosition(x, y);
                         arg.removeOutput();
                         new_scope.scope[symbol] = arg;
                         SCENE.addEdge(lambda.addArg(), arg.addArg());
@@ -139,6 +145,9 @@ function addTree(data, parent, index, scope, depth) {
                     let symbol = binding.children[0];
                     let value = binding.children[1];
                     let arg = new_scope.addNode(symbol.source);
+                    x = Math.floor((Math.random() - 0.5) * new_scope.width);
+                    y = Math.floor((Math.random() - 0.5) * new_scope.height);
+                    arg.setPosition(x, y);
                     arg.removeOutput();
                     new_scope.scope[symbol] = arg;
                     SCENE.addEdge(node.addArg(), arg.addArg());

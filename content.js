@@ -906,9 +906,11 @@ function onMouseScroll(event) {
 }
 
 function updateForces(scene) {
-  let k = 0.01;
-  let repellent = -1000;
-  let dx, dy, start, end, startNode, endNode, scale, v, distance;
+    let k = 0.01;
+    let repellent = -1000;
+    let dx, dy, start, end, startNode, endNode, scale, v, distance;
+    if (scene) for (let i = 0; i < SCENE.children.edge.length; i++)
+        SCENE.children.edge[i].update();
   if (SCENE) for (let i = 0; i < SCENE.meshes.scope.length; i++) {
     let scope = SCENE.meshes.scope[i].object;
     for (let j = 0; j < scope.children.node.length; j++)
@@ -977,6 +979,7 @@ function updateRealForces(scene) {
     let node_repellent = -1000;
     let node, sibling;
     let dx, dy, start, end, startNode, endNode, scale, v, distance;
+
     if (scene) for (let i = 0; i < SCENE.meshes.scope.length; i++) {
         let scope = SCENE.meshes.scope[i].object;
         for (let j = 0; j < scope.children.node.length; j++)
@@ -1023,7 +1026,7 @@ function updateRealForces(scene) {
 }
 
 function render(scene) {
-  //updateForces(scene);
+  updateForces(scene);
   requestAnimationFrame(render);
   CONTROLS.update();
   RENDERER.render(SCENE.mesh, CAMERA);
