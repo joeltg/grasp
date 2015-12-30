@@ -14,11 +14,16 @@ function center() {
     CONTROLS.target.set(0, 0, 0);
 }
 function clear() {
-    for (var i = 1; i < SCENE.children.plane.length; i++) {
-        SCENE.children.plane[i].remove();
-    }
     for (var i = 0; i < SCENE.children.edge.length; i++) {
+        SCENE.children.edge[i].start.remove();
+        SCENE.children.edge[i].end.remove();
         SCENE.children.edge[i].remove();
+    }
+    for (i = 1; i < SCENE.children.plane.length; i++) {
+        for (var j = 0; j < SCENE.children.plane[i].children.scope.length; j++) {
+            SCENE.children.plane[i].children.scope[j].remove();
+        }
+        SCENE.children.plane[i].remove();
     }
     SCOPE.remove();
     SCOPE = PLANE.addScope();
@@ -168,9 +173,9 @@ function addTree(data, parent, index, scope, depth) {
                 new_scope.scope = {_parent: scope.scope};
                 for (var i = 0; i < bindings.length; i++) {
                     var binding = bindings[i];
-                    var symbol = binding.children[0];
+                    var symbol = binding.children[0].source;
                     var value = binding.children[1];
-                    var arg = new_scope.addNode(symbol.source);
+                    var arg = new_scope.addNode(symbol);
                     x = Math.floor((Math.random() - 0.5) * new_scope.width);
                     y = Math.floor((Math.random() - 0.5) * new_scope.height);
                     arg.setPosition(x, y);
@@ -234,6 +239,8 @@ function addTree(data, parent, index, scope, depth) {
         else {
             // atom
             var value = find(data.source, scope.scope);
+            console.log(data.source, scope.scope);
+            console.log(' ');
             if (value) {
                 // atom is binding
                 if (value.parent == scope) {

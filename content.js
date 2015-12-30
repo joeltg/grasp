@@ -1,5 +1,5 @@
 var SCENE, CAMERA, RENDERER, CONTROLS, CONTAINER, RAYCASTER, MOUSE, OFFSET = new THREE.Vector3();
-var ATOM_HEIGHT = 8, NODE_HEIGHT = 20, NODE_WIDTH = 10, NODE_PADDING = 10, INPUT_PADDING = 20, INPUT_ELEVATION = 1;
+var ATOM_HEIGHT = 8, NODE_HEIGHT = 20, NODE_PADDING = 10, INPUT_PADDING = 20, INPUT_ELEVATION = 1;
 var EDITOR_WIDTH = 400, NAVBAR_HEIGHT = 64, LEVEL_SPACING = 128;
 
 var DRAG_OBJECT, DRAG_EDGE, DRAG_SOURCE, DRAG_TARGET, DRAG_INPUT, DRAG_OUTPUT;
@@ -139,7 +139,7 @@ function GRASPObject() {
         if (local_index != 0 && (!local_index || local_index < 0)) local_index = siblings.length;
         local_index = Math.max(siblings.length, local_index);
         siblings.splice(local_index, 0, object);
-        for (var i = local_index; i < siblings.length; i++) siblings[i].local_index = i;
+        for (i = local_index; i < siblings.length; i++) siblings[i].local_index = i;
         this.mesh.add(object.mesh);
         return object;
     };
@@ -190,8 +190,8 @@ function Scene() {
     CONTAINER.appendChild(RENDERER.domElement);
     CAMERA = new THREE.PerspectiveCamera(60, (window.innerWidth - EDITOR_WIDTH) / (window.innerHeight - NAVBAR_HEIGHT), 1, 10000);
     CAMERA.position.z = 500;
-    //CONTROLS = new THREE.TrackballControls(CAMERA);
-    CONTROLS = {update: function() {}};
+    CONTROLS = new THREE.TrackballControls(CAMERA);
+    //CONTROLS = {update: function() {}};
     CONTROLS.noZoom = false;
     CONTROLS.noPan = false;
 
@@ -376,7 +376,7 @@ function Node(name) {
         if (!width && width != 0) width = Math.max(this.text_width, this.input_width, this.output_width, 10);
         if (!height && height != 0) height = NODE_HEIGHT;
         width = width + NODE_PADDING;
-        if ((width != this.width) || (height != this.height)) for (var i = 0; i < this.mesh.geometry.vertices.length; i++) {
+        if ((width != this.width) || (height != this.height)) for (i = 0; i < this.mesh.geometry.vertices.length; i++) {
             var vertex = this.mesh.geometry.vertices[i];
             vertex.x = (vertex.x < 0 ? -1 : 1) * width / 2.0;
             vertex.y = (vertex.y < 0 ? -1 : 1) * height / 2.0;
@@ -413,8 +413,8 @@ function Node(name) {
             for (var j = 0; j < this.children.input[i].edge.length; j++)
                 this.children.input[i].edge[j].update();
             //if (this.children.input[i].edge) this.children.input[i].edge.update();
-        for (var i = 0; i < this.children.output.length; i++)
-            for (var j = 0; j < this.children.output[i].edge.length; j++)
+        for (i = 0; i < this.children.output.length; i++)
+            for (j = 0; j < this.children.output[i].edge.length; j++)
                 this.children.output[i].edge[j].update();
             //if (this.children.output[i].edge) this.children.output[i].edge.update();
     };
@@ -493,7 +493,6 @@ function Edge(start, end) {
     GRASPObject.apply(this);
     this.start = start;
     this.end = end;
-    this.trans_plane = false;
 
     start.edge.push(this);
     end.edge.push(this);
@@ -784,7 +783,7 @@ function move(x, y, dragging) {
     */
 }
 
-function up(x, y) {
+function up() {
     /*
     if (DRAG_EDGE) {
         var intersects, intersect, edge;
@@ -913,80 +912,80 @@ function updateForces(scene) {
     var dx, dy, start, end, startNode, endNode, scale, v, distance;
     if (scene) for (var i = 0; i < SCENE.children.edge.length; i++)
         SCENE.children.edge[i].update();
-  if (SCENE) for (var i = 0; i < SCENE.meshes.scope.length; i++) {
-    var scope = SCENE.meshes.scope[i].object;
-    for (var j = 0; j < scope.children.node.length; j++)
-      scope.children.node[j].force = new THREE.Vector2();
-    for (var j = 0; j < scope.children.edge.length; j++) {
-      var edge = scope.children.edge[j];
-      edge.update();
-      if (edge.start && edge.end) {
-        start = null; end = null;
-        if (edge.start.parent.type == 'node') {
-          startNode = edge.start.parent;
-          start = edge.start.parent.mesh.position.clone().add(edge.start.mesh.position);
+    if (scene) for (i = 0; i < SCENE.meshes.scope.length; i++) {
+        var scope = SCENE.meshes.scope[i].object;
+        for (var j = 0; j < scope.children.node.length; j++)
+            scope.children.node[j].force = new THREE.Vector2();
+        for (j = 0; j < scope.children.edge.length; j++) {
+            var edge = scope.children.edge[j];
+            edge.update();
+            if (edge.start && edge.end) {
+                start = null; end = null;
+                if (edge.start.parent.type == 'node') {
+                    startNode = edge.start.parent;
+                    start = edge.start.parent.mesh.position.clone().add(edge.start.mesh.position);
+                }
+                else if (edge.start.type == 'node') {
+                    startNode = edge.start;
+                    start = edge.start.mesh.position.clone();
+                }
+                if (edge.end.parent.type == 'node') {
+                    endNode = edge.end.parent;
+                    end = edge.end.parent.mesh.position.clone().add(edge.end.mesh.position);
+                }
+                else if (edge.end.type == 'node') {
+                    endNode = edge.end;
+                    end = edge.end.mesh.position.clone();
+                }
+                if (start && end) {
+                    // edge spring
+                    v = new THREE.Vector2(end.x - start.x, end.y - start.y);
+                    v.multiplyScalar(k);
+                    if (startNode != DRAG_OBJECT) startNode.force.add(v);
+                    v.multiplyScalar(-1);
+                    if (endNode != DRAG_OBJECT) endNode.force.add(v);
+                }
+            }
         }
-        else if (edge.start.type == 'node') {
-          startNode = edge.start;
-          start = edge.start.mesh.position.clone();
+        var node, sibling;
+        // node repellent
+        for (j = 0; j < scope.children.node.length; j++) {
+            node = scope.children.node[j];
+                if (node != DRAG_OBJECT) for (var l = 0; l < scope.children.node.length; l++) if (l != j) {
+                sibling = scope.children.node[l];
+                dx = sibling.mesh.position.x - node.mesh.position.x;
+                dy = sibling.mesh.position.y - node.mesh.position.y;
+                if (dx == 0) dx = -1;
+                if (dy == 0) dy = -1;
+                distance = (dx * dx) + (dy * dy);
+                if (distance < 10) scale = .1;
+                else scale = repellent / distance;
+                v = new THREE.Vector2(dx, dy);
+                v.setLength(scale);
+                node.force.add(v);
+            }
         }
-        if (edge.end.parent.type == 'node') {
-          endNode = edge.end.parent;
-          end = edge.end.parent.mesh.position.clone().add(edge.end.mesh.position);
+        for (j = 0; j < scope.children.node.length; j++) {
+            node = scope.children.node[j];
+            if (Math.abs(node.mesh.position.x) + (node.width / 2.0) < scope.width / 2.0)
+                node.mesh.position.x += node.force.x;
+            if (Math.abs(node.mesh.position.y) + (node.height / 2.0) < scope.height / 2.0)
+                node.mesh.position.y += node.force.y
         }
-        else if (edge.end.type == 'node') {
-          endNode = edge.end;
-          end = edge.end.mesh.position.clone();
-        }
-        if (start && end) {
-          // edge spring
-          v = new THREE.Vector2(end.x - start.x, end.y - start.y);
-          v.multiplyScalar(k);
-          if (startNode != DRAG_OBJECT) startNode.force.add(v);
-          v.multiplyScalar(-1);
-          if (endNode != DRAG_OBJECT) endNode.force.add(v);
-        }
-      }
     }
-    var node, sibling;
-    // node repellent
-    for (var j = 0; j < scope.children.node.length; j++) {
-      node = scope.children.node[j];
-      if (node != DRAG_OBJECT) for (var l = 0; l < scope.children.node.length; l++) if (l != j) {
-        sibling = scope.children.node[l];
-        dx = sibling.mesh.position.x - node.mesh.position.x;
-        dy = sibling.mesh.position.y - node.mesh.position.y;
-        if (dx == 0) dx = -1;
-        if (dy == 0) dy = -1;
-        distance = (dx * dx) + (dy * dy);
-        if (distance < 10) scale = .1;
-        else scale = repellent / distance;
-        v = new THREE.Vector2(dx, dy);
-        v.setLength(scale);
-        node.force.add(v);
-      }
-    }
-    for (var j = 0; j < scope.children.node.length; j++) {
-      node = scope.children.node[j];
-      if (Math.abs(node.mesh.position.x) + (node.width / 2.0) < scope.width / 2.0)
-        node.mesh.position.x += node.force.x;
-      if (Math.abs(node.mesh.position.y) + (node.height / 2.0) < scope.height / 2.0)
-        node.mesh.position.y += node.force.y
-    }
-  }
 }
 
 function updateRealForces(scene) {
     var spring_constant = 0.01;
     var node_repellent = -1000;
     var node, sibling;
-    var dx, dy, start, end, startNode, endNode, scale, v, distance;
+    var dx, dy, scale, v, distance;
 
     if (scene) for (var i = 0; i < SCENE.meshes.scope.length; i++) {
         var scope = SCENE.meshes.scope[i].object;
         for (var j = 0; j < scope.children.node.length; j++)
             scope.children.node[j].force = new THREE.Vector2(0, 0);
-        for (var j = 0; j < scope.children.node.length; j++) {
+        for (j = 0; j < scope.children.node.length; j++) {
             if (scope.children.node[j] != DRAG_OBJECT) {
                 for (var k = 0; k < scope.children.node.length; k++) {
                     if (scope.children.node[k] != DRAG_OBJECT) {
@@ -1012,8 +1011,8 @@ function updateRealForces(scene) {
                                 //    node.children.output[l].edge.update();
                                 //}
                             }
-                            for (var l = 0; l < node.args; l++) {
-                                for (var m = 0; m < node.args[l].edge.length; m++)
+                            for (l = 0; l < node.args; l++) {
+                                for (m = 0; m < node.args[l].edge.length; m++)
                                     node.args[l].edge[m].update();
                                 //if (node.args[l].edge) {
                                 //    node.args[l].edge.update();
