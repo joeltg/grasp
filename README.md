@@ -23,8 +23,9 @@ GRASP was heavily inspired by many projects and people, only some of which are l
   - [Demo by Alan Kay](https://www.youtube.com/watch?v=QQhVQ1UG6aM)
 - [Full Metal Jacket](http://web.onetel.net.uk/~hibou/fmj/FMJ.html)
 - [Bret Victor](http://worrydream.com), a god among mortals, particularily for
-  - [The Future of Programming](https://vimeo.com/71278954) and
-  - [Learnable Programming](http://worrydream.com/#!/LearnableProgramming)
+  - [The Future of Programming](https://vimeo.com/71278954)
+  - [Learnable Programming (http://worrydream.com/#!/LearnableProgramming)
+  - [Alligator Lambda Calculus](http://worrydream.com/#!/AlligatorEggs)
 - [Scratch](https://scratch.mit.edu/), but only it convinced me that we can do so much better
 - [NoFlo](http://noflojs.org/), for reasons similar to Scratch
 - [Ivan Sutherland](https://en.wikipedia.org/wiki/Ivan_Sutherland) and [Sketchpad](https://en.wikipedia.org/wiki/Sketchpad)
