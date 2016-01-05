@@ -10,6 +10,10 @@ In GRASP, variables don't need to be named, since every reference links back to 
 
 GRASP is an ongoing project. The project's long-term goal is to eliminate the need for text entirely (changing the mindset to optionally "labeling" nodes to be searchable later), and implement a completely visual Scheme IDE in imersive VR, but right now I'm working on making the graph editable directly by dragging edges from node to node, reflecting those changes dynamically in the textual code, and working on integrating a Scheme to JavaScript interpreter to visualize data flow in program execution step-by-step or in real-time.
 
+##Wait, this is just like every other visual programming thing I've seen
+Well, no. It isn't.
+All the visual "languages" that exist are shallow wrappers around fundamentally textual code, and usually end up requiring the user to type just as many characters to do the same thing. The goal of GRASP is to eliminate the keyboard altogether. It seems subtle, but the difference is very fundamental.
+
 ##Demo
 http://joeltg.github.io/grasp
 
@@ -24,7 +28,7 @@ GRASP was heavily inspired by many projects and people, only some of which are l
 - [Full Metal Jacket](http://web.onetel.net.uk/~hibou/fmj/FMJ.html)
 - [Bret Victor](http://worrydream.com), a god among mortals, particularily for
   - [The Future of Programming](https://vimeo.com/71278954)
-  - [Learnable Programming (http://worrydream.com/#!/LearnableProgramming)
+  - [Learnable Programming](http://worrydream.com/#!/LearnableProgramming)
   - [Alligator Lambda Calculus](http://worrydream.com/#!/AlligatorEggs)
 - [Scratch](https://scratch.mit.edu/), but only it convinced me that we can do so much better
 - [NoFlo](http://noflojs.org/), for reasons similar to Scratch
