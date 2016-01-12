@@ -14,6 +14,11 @@ GRASP is an ongoing project. The project's long-term goal is to eliminate the ne
 Well, no. It isn't.
 All the visual "languages" that exist are shallow wrappers around fundamentally textual code, and usually end up requiring the user to type just as many characters to do the same thing. The goal of GRASP is to eliminate the keyboard altogether. It seems subtle, but the difference is very fundamental.
 
+##Wait, the graph looks harder to understand than the code
+It probably does! That's because 1) this is in pre-alpha and I haven't got the graphics to work well, but mostly 2) you've spent n years staring enormous text files of code and your brain has trained for ages to parse it. For large n, it actually gets more difficult to think about programs in new contexts or in new representations: as Marvin Minsky once said, "anyone could learn Lisp in one day, except that if they already knew Fortran, it would take three days." 
+
+Grab the nearest non-coder and see if they 'get' GRASP. You might be surprised.
+
 ##Demo
 http://joeltg.github.io/grasp
 
@@ -37,5 +42,6 @@ GRASP was heavily inspired by many projects and people, only some of which are l
 
 ##Credits
 - [Three.js](https://github.com/mrdoob/three.js/)
-- [Ace editor](https://github.com/ajaxorg/ace)
+- [Ace Editor](https://github.com/ajaxorg/ace)
 - [paredit.js](https://github.com/rksm/paredit.js)
+- [Material Design Lite](http://www.getmdl.io/)
