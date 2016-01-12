@@ -41,7 +41,7 @@ GRASP was heavily inspired by many projects and people, only some of which are l
 - [Eve](http://eve-lang.com/)
 
 ##Credits
-- [Three.js](https://github.com/mrdoob/three.js/)
-- [Ace Editor](https://github.com/ajaxorg/ace)
-- [paredit.js](https://github.com/rksm/paredit.js)
-- [Material Design Lite](http://www.getmdl.io/)
+- [Three.js](/mrdoob/three.js/)
+- [Ace Editor](/ajaxorg/ace)
+- [paredit.js](/rksm/paredit.js)
+- [Material Design Lite](/google/material-design-lite)
