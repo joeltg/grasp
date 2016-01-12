@@ -8,7 +8,7 @@ In GRASP, variables don't need to be named, since every reference links back to 
 
 ![](https://raw.githubusercontent.com/joeltg/grasp/master/screenshots/1.png)
 
-GRASP is an ongoing project. The project's long-term goal is to eliminate the need for text entirely (changing the mindset to optionally "labeling" nodes to be searchable later), and implement a completely visual Scheme IDE in imersive VR, but right now I'm working on making the graph editable directly by dragging edges from node to node, reflecting those changes dynamically in the textual code, and working on integrating a Scheme to JavaScript interpreter to visualize data flow in program execution step-by-step or in real-time.
+GRASP is an ongoing project. The project's long-term goal is to eliminate the need for text entirely (changing the mindset to optionally "labeling" nodes to be searchable later), and implement a completely visual Scheme IDE in imersive VR, but right now I'm working on making the graph editable directly by dragging edges from node to node while reflecting those changes dynamically in the textual code, and working on integrating a Scheme to JavaScript interpreter to visualize data flow in program execution step-by-step or in real-time.
 
 ##Wait, this is just like every other visual programming thing I've seen
 Well, no. It isn't.
