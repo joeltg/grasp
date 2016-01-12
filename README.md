@@ -35,7 +35,7 @@ GRASP was heavily inspired by many projects and people, only some of which are l
   - [The Future of Programming](https://vimeo.com/71278954)
   - [Learnable Programming](http://worrydream.com/#!/LearnableProgramming)
   - [Alligator Lambda Calculus](http://worrydream.com/#!/AlligatorEggs)
-- [Scratch](https://scratch.mit.edu/), but only it convinced me that we can do so much better
+- [Scratch](https://scratch.mit.edu/), but only because it convinced me that we can do so much better
 - [NoFlo](http://noflojs.org/), for reasons similar to Scratch
 - [Ivan Sutherland](https://en.wikipedia.org/wiki/Ivan_Sutherland) and [Sketchpad](https://en.wikipedia.org/wiki/Sketchpad)
 - [Eve](http://eve-lang.com/)
