@@ -1,22 +1,21 @@
 "use strict";
 
-document.getElementById('calculate').addEventListener('click', function() {
+document.getElementById('calculate').addEventListener('click', function () {
     let text = editor.getValue();
     let data = paredit.parse(text);
-    if (data.errors.length > 0) console.error(data);
-    else for (let i = 0; i < data.children.length; i++) add(data.children[i], SCOPE);
+    if (data.errors.length > 0) console.error(data);else for (let i = 0; i < data.children.length; i++) add(data.children[i], SCOPE);
 });
 
-document.getElementById('clear').addEventListener('click', function() {
+document.getElementById('clear').addEventListener('click', function () {
     SCENE.remove();
     PLANE = SCENE.addPlane();
     SCOPE = PLANE.add(new Scope());
 });
 
-document.getElementById('center').addEventListener('click', function() {
+document.getElementById('center').addEventListener('click', function () {
     SCENE.camera.position.set(0, 0, 500);
-    SCENE.camera.up = new THREE.Vector3(0,1,0);
-    SCENE.camera.lookAt(new THREE.Vector3(0,0,0));
+    SCENE.camera.up = new THREE.Vector3(0, 1, 0);
+    SCENE.camera.lookAt(new THREE.Vector3(0, 0, 0));
     SCENE.controls.target.set(0, 0, 0);
 });
 
@@ -29,13 +28,11 @@ function lambda(params, body, scope) {
             let symbol = param.source;
             let variable = new_scope.addVariable(symbol);
             SCENE.addEdge(l.add(new Input(symbol)), variable.addInput());
-        }
-        else return console.error('invalid params in lambda', data);
+        } else return console.error('invalid params in lambda', data);
     }
     let child;
     for (let i = 0; i < body.length; i++) child = add(body[i], new_scope);
-    if (child) SCENE.addEdge(l.addOutput(), child.output);
-    else return console.error('lambda had no body', body);
+    if (child) SCENE.addEdge(l.addOutput(), child.output);else return console.error('lambda had no body', body);
     return l;
 }
 
@@ -44,18 +41,14 @@ function define(symbol, value, scope) {
     if (reference) {
         // binding already exists
         if (value) {
-            if (value.type == 'list') scope.addEdge(add(value, scope).output, reference.addInput());
-            else reference.addInput(value.source);
+            if (value.type == 'list') scope.addEdge(add(value, scope).output, reference.addInput());else reference.addInput(value.source);
         }
         return console.error('invalid re-definition', symbol, value);
-    }
-    else {
+    } else {
         // new binding
         let variable = scope.addVariable(symbol);
         if (value) {
-            if (value.type == 'list')
-                scope.addEdge(add(value, scope).output, variable.addInput());
-            else variable.addInput(value.source);
+            if (value.type == 'list') scope.addEdge(add(value, scope).output, variable.addInput());else variable.addInput(value.source);
         }
         return variable;
     }
@@ -70,10 +63,8 @@ function letx(name, bindings, body, recursive, scope) {
             let variable = new_scope.addVariable(symbol);
             if (bindings[i].children[1].type == 'list') {
                 // init value is expression
-                if (recursive) new_scope.addEdge(add(bindings[i].children[1], new_scope).output, variable.addInput());
-                else SCENE.addEdge(add(bindings[i].children[1], scope).output, variable.addInput());
-            }
-            else {
+                if (recursive) new_scope.addEdge(add(bindings[i].children[1], new_scope).output, variable.addInput());else SCENE.addEdge(add(bindings[i].children[1], scope).output, variable.addInput());
+            } else {
                 // init value is atom
                 variable.addInput(bindings[i].children[1].source);
             }
@@ -81,8 +72,7 @@ function letx(name, bindings, body, recursive, scope) {
     }
     let child;
     for (let i = 0; i < body.length; i++) child = add(body[i], new_scope);
-    if (child) SCENE.addEdge(l.addOutput(), child.output);
-    else return console.error('let had no body', body);
+    if (child) SCENE.addEdge(l.addOutput(), child.output);else return console.error('let had no body', body);
     return l;
 }
 
@@ -92,38 +82,26 @@ function add(data, scope) {
             let source = data.children[0].source;
             switch (source) {
                 case 'lambda':
-                    if (data.children.length > 2 && data.children[1].type == 'list')
-                        return lambda(data.children[1].children, data.children.slice(2), scope);
-                    else return console.error('invalid lambda', data);
+                    if (data.children.length > 2 && data.children[1].type == 'list') return lambda(data.children[1].children, data.children.slice(2), scope);else return console.error('invalid lambda', data);
                 case 'let':
-                    if (data.children.length > 2 && data.children[1].type == 'list')
-                        return letx('let', data.children[1].children, data.children.slice(2), false, scope);
-                    else return console.error('invalid let', data);
+                    if (data.children.length > 2 && data.children[1].type == 'list') return letx('let', data.children[1].children, data.children.slice(2), false, scope);else return console.error('invalid let', data);
                 case 'let*':
-                    if (data.children.length > 2 && data.children[1].type == 'list')
-                        return letx('let*', data.children[1].children, data.children.slice(2), true, scope);
-                    else return console.error('invalid let*', data);
+                    if (data.children.length > 2 && data.children[1].type == 'list') return letx('let*', data.children[1].children, data.children.slice(2), true, scope);else return console.error('invalid let*', data);
                 case 'letrec':
-                    if (data.children.length > 2 && data.children[1].type == 'list')
-                        return letx('letrec', data.children[1].children, data.children.slice(2), true, scope);
-                    else return console.error('invalid letrec', data);
+                    if (data.children.length > 2 && data.children[1].type == 'list') return letx('letrec', data.children[1].children, data.children.slice(2), true, scope);else return console.error('invalid letrec', data);
                 case 'define':
                     if (data.children.length > 1 && data.children[1].type == 'symbol') {
                         let symbol = data.children[1].source;
                         let value = data.children[2];
                         return define(symbol, value, scope);
-                    }
-                    else if (data.children.length > 2 &&
-                        data.children[1].children[0].type == 'symbol' &&
-                        data.children[1].type == 'list') {
+                    } else if (data.children.length > 2 && data.children[1].children[0].type == 'symbol' && data.children[1].type == 'list') {
                         // function definition
                         let l = lambda(data.children[1].children.slice(1), data.children.slice(2), scope);
                         let variable = scope.addVariable(data.children[1].children[0].source);
                         console.log(l);
                         scope.addEdge(l.output, variable.addInput());
                         return l;
-                    }
-                    else return console.error('invalid variable definition', data);
+                    } else return console.error('invalid variable definition', data);
                     break;
                 case 'set!':
                     if (data.children.length > 2 && data.children[1].type == 'symbol') {
@@ -131,24 +109,21 @@ function add(data, scope) {
                         let reference = scope.findBinding(symbol);
                         if (reference) {
                             let value = data.children[2];
-                            if (value.type == 'list') scope.addEdge(add(value, scope).output, reference.addInput());
-                            else reference.addInput(value.source);
+                            if (value.type == 'list') scope.addEdge(add(value, scope).output, reference.addInput());else reference.addInput(value.source);
                             return reference;
-                        }
-                        else return console.error('could not locate set! reference');
+                        } else return console.error('could not locate set! reference');
                     }
                     return console.error('invalid set!', data);
                 default:
                     let form = scope.addForm(source);
                     for (let i = 1; i < data.children.length; i++) {
                         let child = data.children[i];
-                        if (child.type == 'list') scope.addEdge(add(child, scope).output, form.addInput());
-                        else form.addInput(child.source);
+                        if (child.type == 'list') scope.addEdge(add(child, scope).output, form.addInput());else form.addInput(child.source);
                     }
                     return form;
             }
-        }
-        else return console.error('first element in form was not a symbol', data);
-    }
-    else return scope.addForm(data.source);
+        } else return console.error('first element in form was not a symbol', data);
+    } else return scope.addForm(data.source);
 }
+
+//# sourceMappingURL=app-compiled.js.map
