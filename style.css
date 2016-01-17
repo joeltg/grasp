@@ -1,19 +1,36 @@
 html, body {
-  height: 100%; width: 100%;
-  margin: 0; padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: #2f3129;
 }
 #control {
     position: absolute;
-    top: 0;
-    right: 0;
-    height: 25px;
-    z-index: 1000;
+    left: 0;
+    bottom: 0;
+    height: 96px;
+    width: 400px;
+}
+.control {
+    color: #F8F8F2 !important;
+}
+.control-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+}
+.control-switch {
+    width: auto !important;
+}
+button.control {
+    margin-top: auto;
+    margin-bottom: auto;
 }
 #editor {
     position: absolute;
     margin: 0;
     top: 64px;
-    bottom: 0;
+    bottom: 96px;
     left: 0;
     width: 400px;
 }
@@ -24,9 +41,4 @@ html, body {
     right: 0;
     bottom: 0;
     left: 400px;
-}
-.ace-syntax-error {
-  position: absolute;
-  border-radius: 3px;
-  background: rgba(255,0,0,0.7);
 }

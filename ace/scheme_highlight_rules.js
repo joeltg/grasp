@@ -40,7 +40,7 @@ var oop = require("../lib/oop");
 var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 
 var SchemeHighlightRules = function() {
-    var keywordControl = "case|do|let|loop|if|else|when";
+    var keywordControl = "case|do|let|let*|letrec|loop|if|else|when";
     var keywordOperator = "eq?|eqv?|equal?|and|or|not|null?";
     var constantLanguage = "#t|#f";
     var supportFunctions = "cons|car|cdr|cond|lambda|lambda*|syntax-rules|format|set!|quote|eval|append|list|list?|member?|load";

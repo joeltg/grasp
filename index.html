@@ -1,74 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>GRASP</title>
-        <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-        <link rel="stylesheet" type="text/css" media="screen" href="style.css">
+<head>
+    <title>GRASP</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel="stylesheet" type="text/css" media="screen" href="style.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon"/>
 
-        <link rel="stylesheet" href="https://storage.googleapis.com/code.getmdl.io/1.0.6/material.indigo-pink.min.css">
-        <script src="https://storage.googleapis.com/code.getmdl.io/1.0.6/material.min.js"></script>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    </head>
-    <body>
-        <!-- Always shows a header, even in smaller screens. -->
-        <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
-            <header class="mdl-layout__header">
-                <div class="mdl-layout__header-row">
-                    <!-- Title -->
-                    <span class="mdl-layout-title">GRASP</span>
-                    <!-- Add spacer, to align navigation to the right -->
-                    <div class="mdl-layout-spacer"></div>
-                    <!-- Navigation. We hide it in small screens. -->
-                    <nav class="mdl-navigation">
-                        <button id="center" style="color: white" class="mdl-button mdl-js-button mdl-js-ripple-effect">
-                            Center
-                        </button>
-                        <button id="clear" style="color: white" class="mdl-button mdl-js-button mdl-js-ripple-effect">
-                            Clear
-                        </button>
-                        <button id="calculate" style="color: white" class="mdl-button mdl-js-button mdl-js-ripple-effect">
-                            Calculate
-                        </button>
+    <!--<link rel="stylesheet" href="https://storage.googleapis.com/code.getmdl.io/1.0.6/material.blue_grey-green.min.css">-->
+    <!--<script src="https://storage.googleapis.com/code.getmdl.io/1.0.6/material.min.js"></script>-->
+    <!--<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">-->
 
-                    </nav>
-                </div>
-            </header>
-            <div class="mdl-layout__drawer">
+    <link rel="stylesheet" href="mdlite/material.blue_grey-green.min.css">
+    <script src="mdlite/material.min.js"></script>
+    <link rel="stylesheet" href="mdlite/icon.css">
+
+    <script src="three/three.min.js" type="text/javascript" charset="utf-8"></script>
+    <script src="three/droid_sans_mono_regular.typeface.js" type="text/javascript" charset="UTF-8"></script>
+    <script src="three/TrackballControls.js" type="text/javascript" charset="UTF-8"></script>
+
+    <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="ace/paredit-bundle.js" type="text/javascript" charset="utf-8"></script>
+</head>
+<body>
+    <!-- Always shows a header, even in smaller screens. -->
+    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+        <header class="mdl-layout__header">
+            <div class="mdl-layout__header-row">
+                <!-- Title -->
                 <span class="mdl-layout-title">GRASP</span>
+                <!-- Add spacer, to align navigation to the right -->
+                <div class="mdl-layout-spacer"></div>
+                <!-- Navigation. We hide it in small screens. -->
                 <nav class="mdl-navigation">
                     <a class="mdl-navigation__link" href="http://github.com/joeltg/grasp">GitHub</a>
                     <a class="mdl-navigation__link" href="/">Home</a>
                 </nav>
             </div>
-            <main class="mdl-layout__content">
-                <div class="page-content">
-                    <div id="content"></div>
-                    <div id="editor"></div>
-                </div>
-            </main>
+        </header>
+        <div class="mdl-layout__drawer">
+            <span class="mdl-layout-title">GRASP</span>
+            <nav class="mdl-navigation">
+                <a class="mdl-navigation__link" href="http://github.com/joeltg/grasp">GitHub</a>
+                <a class="mdl-navigation__link" href="/">Home</a>
+            </nav>
         </div>
-
-        <!--<script src="ace-builds-master/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>-->
-
-        <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
-        <script src="ace/ext-language_tools.js" type="text/javascript" charset="utf-8"></script>
-        <!--<script src="ace/keybinding-emacs.js" type="text/javascript" charset="utf-8"></script>-->
-        <script src="ace/paredit-bundle.js" type="text/javascript" charset="utf-8"></script>
-        <script src="ace/ace.improvements.js" type="text/javascript" charset="utf-8"></script>
-        <script src="ace/ace.ext.lang.codemarker.js" type="text/javascript" charset="utf-8"></script>
-        <!--<script src="ace/ace.ext.lang.ast-commands.js" type="text/javascript" charset="utf-8"></script>-->
-        <script src="ace/ace.ext.keys.js" type="text/javascript" charset="utf-8"></script>
-        <script src="ace/ace.ext.lang.paredit.js" type="text/javascript" charset="utf-8"></script>
-
-
-        <script src="three/three.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="three/TrackballControls.js" type="text/javascript" charset="utf-8"></script>
-        <script src="three/droid_sans_regular.typeface.js" type="text/javascript" charset="utf-8"></script>
-
-        <script src="content.js" type="text/javascript" charset="utf-8"></script>
-        <script src="editor.js" type="text/javascript" charset="utf-8"></script>
-        <script src="app.js" type="text/javascript" charset="utf-8"></script>
-    </body>
+        <main class="mdl-layout__content">
+            <div class="page-content">
+                <div id="content"></div>
+                <div id="editor"></div>
+                <div id="control">
+                    <div class="control-row">
+                        <label class="control-switch mdl-switch mdl-js-switch mdl-js-ripple-effect" for="switch-1">
+                            <input type="checkbox" id="switch-1" class="mdl-switch__input" checked>
+                            <span class="control mdl-switch__label">Labels</span>
+                        </label>
+                    </div>
+                    <div class="control-row">
+                        <button id="center" class="control mdl-button mdl-js-button mdl-js-ripple-effect">
+                            Center
+                        </button>
+                        <button id="clear" class="control mdl-button mdl-js-button mdl-js-ripple-effect">
+                            Clear
+                        </button>
+                        <button id="calculate" class="control mdl-button mdl-js-button mdl-js-ripple-effect">
+                            Calculate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="content.js" type="text/javascript" charset="utf-8"></script>
+    <script src="editor.js" type="text/javascript" charset="UTF-8"></script>
+    <script src="app.js" type="text/javascript" charset="utf-8"></script>
+</body>
 </html>
