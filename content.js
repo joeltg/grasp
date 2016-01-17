@@ -338,22 +338,21 @@ class Node extends GRASPObject {
     }
     addInput(label, color, radius, index) {
         radius = radius || INPUT_RADIUS;
-        let input = this.add(new Input(label, color, radius), index);
-        if (this.updateSize) this.updateSize();
         let scope = this.parent;
+        let input;
         if (label && scope) {
-            if (scope.scope && scope.scope[label]) {
-                // local reference
-                scope.add(new Edge(scope.scope[label].addOutput(), input, COLORS.blue)).update();
+            let value = scope.findBinding(label);
+            if (value) {
+                let real_label = null;
+                if (document.getElementById('labels').checked) real_label = label;
+                input = this.add(new Input(real_label, color, radius), index);
+                if (scope.scope[label]) scope.add(new Edge(value.addOutput(), input, COLORS.blue)).update();
+                else SCENE.add(new Edge(value.addOutput(), input, COLORS.blue)).update();
             }
-            else {
-                // previous reference
-                let value = scope.findBinding(label);
-                if (value) {
-                    SCENE.add(new Edge(value.addOutput(), input, COLORS.blue)).update();
-                }
-            }
+            else input = this.add(new Input(label, color, radius), index);
         }
+        else input = this.add(new Input(null, color, radius), index);
+        if (this.updateSize) this.updateSize();
         return input;
     }
     addOutput(index) {
