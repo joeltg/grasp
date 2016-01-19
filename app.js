@@ -1,11 +1,9 @@
+"use strict";
+
 document.getElementById('calculate').addEventListener('click', calculate);
-
 document.getElementById('clear').addEventListener('click', clear);
-
 document.getElementById('center').addEventListener('click', center);
-
 document.getElementById('labels').addEventListener('click', toggleLabels);
-
 document.getElementById('names').addEventListener('click', toggleNames);
 
 function center() {

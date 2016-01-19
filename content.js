@@ -1,3 +1,5 @@
+"use strict";
+
 var MOUSE = new THREE.Vector3(0, 0, 0), OFFSET = new THREE.Vector2(0, 0);
 var EDITOR_WIDTH = 400 + 3, NAVBAR_HEIGHT = 64 + 3;
 var LEVEL_SPACING = 256, ARG_ELEVATION = 1, ARG_SPACING = 20, INPUT_RADIUS = 5, OUTPUT_RADIUS = 5;
