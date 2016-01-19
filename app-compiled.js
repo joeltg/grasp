@@ -77,7 +77,7 @@ function lambda(params, body, scope) {
         let param = params[i];
         if (param.type == 'symbol') {
             let symbol = param.source;
-            let variable = new_scope.addVariable(symbol);
+            let variable = new_scope.addVariable(symbol, !document.getElementById('names').checked);
             SCENE.addEdge(l.add(new Input(symbol)), variable.addInput());
         } else return console.error('invalid params in lambda', data);
     }

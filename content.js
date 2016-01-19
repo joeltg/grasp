@@ -293,8 +293,8 @@ class Scope extends GRASPObject {
             if (scope.scope[label]) return scope.scope[label];
         return null;
     }
-    addVariable(name) {
-        let variable = this.add(new Variable(name));
+    addVariable(name, hide_label) {
+        let variable = this.add(new Variable(name, hide_label));
         this.scope[name] = variable;
         return variable;
     }
@@ -405,12 +405,13 @@ class Form extends Node {
 }
 
 class Variable extends Node {
-    constructor(name) {
+    constructor(name, hide_label) {
         super();
         //this.type = 'Variable';
         this.setColor(COLORS.blue);
         this.name = name;
-        this.label = this.add(new Text(name, 10, 5.1));
+        if (hide_label) this.label = null;
+        else this.label = this.add(new Text(name, 10, 5.1));
         this.updateSize();
         return this;
     }
