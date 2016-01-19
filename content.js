@@ -294,7 +294,6 @@ class Scope extends GRASPObject {
         return null;
     }
     addVariable(name, hide_label) {
-        console.log(hide_label);
         let variable = this.add(new Variable(name, hide_label));
         this.scope[name] = variable;
         return variable;

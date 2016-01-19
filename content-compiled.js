@@ -411,7 +411,6 @@ var Scope = (function (_GRASPObject3) {
     }, {
         key: 'addVariable',
         value: function addVariable(name, hide_label) {
-            console.log(hide_label);
             var variable = this.add(new Variable(name, hide_label));
             this.scope[name] = variable;
             return variable;
