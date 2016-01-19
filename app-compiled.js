@@ -1,23 +1,53 @@
 "use strict";
 
-document.getElementById('calculate').addEventListener('click', function () {
-    let text = editor.getValue();
-    let data = paredit.parse(text);
-    if (data.errors.length > 0) console.error(data);else for (let i = 0; i < data.children.length; i++) add(data.children[i], SCOPE);
-});
+document.getElementById('calculate').addEventListener('click', calculate);
 
-document.getElementById('clear').addEventListener('click', function () {
-    SCENE.remove();
-    PLANE = SCENE.addPlane();
-    SCOPE = PLANE.add(new Scope());
-});
+document.getElementById('clear').addEventListener('click', clear);
 
-document.getElementById('center').addEventListener('click', function () {
+document.getElementById('center').addEventListener('click', center);
+
+document.getElementById('labels').addEventListener('click', toggleLabels);
+
+function center() {
     SCENE.camera.position.set(0, 0, 500);
     SCENE.camera.up = new THREE.Vector3(0, 1, 0);
     SCENE.camera.lookAt(new THREE.Vector3(0, 0, 0));
     SCENE.controls.target.set(0, 0, 0);
-});
+}
+function clear() {
+    SCENE.remove();
+    PLANE = SCENE.addPlane();
+    SCOPE = PLANE.add(new Scope());
+}
+function calculate() {
+    clear();
+    let text = editor.getValue();
+    let data = paredit.parse(text);
+    if (data.errors.length > 0) console.error(data);else for (let i = 0; i < data.children.length; i++) add(data.children[i], SCOPE);
+}
+
+function toggleLabels() {
+    let labels = document.getElementById('labels').checked;
+    if (SCENE.meshes.Input) for (let i = 0; i < SCENE.meshes.Input.length; i++) {
+        let input = SCENE.meshes.Input[i].object;
+        if (input.edge) {
+            if (labels) {
+                if (!input.label) {
+                    input.label = input.add(new Label(input.label_text, 2 * input.radius));
+                    input.width = input.label.width;
+                    input.parent.updateSize();
+                }
+            } else {
+                if (input.label) {
+                    input.label.remove();
+                    input.label = null;
+                    input.width = 0;
+                    input.parent.updateSize();
+                }
+            }
+        }
+    }
+}
 
 function lambda(params, body, scope) {
     let l = scope.addForm('λ');
@@ -98,7 +128,6 @@ function add(data, scope) {
                         // function definition
                         let l = lambda(data.children[1].children.slice(1), data.children.slice(2), scope);
                         let variable = scope.addVariable(data.children[1].children[0].source);
-                        console.log(l);
                         scope.addEdge(l.output, variable.addInput());
                         return l;
                     } else return console.error('invalid variable definition', data);

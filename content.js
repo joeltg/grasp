@@ -2,7 +2,7 @@
 
 var MOUSE = new THREE.Vector3(0, 0, 0), OFFSET = new THREE.Vector2(0, 0);
 var EDITOR_WIDTH = 400 + 3, NAVBAR_HEIGHT = 64 + 3;
-var LEVEL_SPACING = 128, ARG_ELEVATION = 1, ARG_SPACING = 20, INPUT_RADIUS = 5, OUTPUT_RADIUS = 5;
+var LEVEL_SPACING = 256, ARG_ELEVATION = 1, ARG_SPACING = 20, INPUT_RADIUS = 5, OUTPUT_RADIUS = 5;
 var DRAG_OBJECT;
 
 var COLORS = {
@@ -26,22 +26,26 @@ class GRASPObject {
     add(object, local_index) {
         this.mesh.add(object.mesh);
         object.parent = this;
+        let first = true;
         for (let proto = object.__proto__; proto; proto = proto.__proto__) {
             let type = proto.constructor.name;
-            let siblings = this.children[type];
-            if (siblings) {
-                local_index = local_index || siblings.length;
-                siblings.splice(local_index, 0, object);
-                for (let j = local_index; j < siblings.length; j++) siblings[j].local_index = j;
+            if (this.children[type]) {
+                if (first) {
+                    local_index = local_index || this.children[type].length;
+                    this.children[type].splice(local_index, 0, object);
+                    for (let j = local_index; j < this.children[type].length; j++) this.children[type][j].local_index = j;
+                }
+                else this.children[type].push(object);
             }
             else {
                 this.children[type] = [object];
-                object.local_index = 0;
+                if (first) object.local_index = 0;
             }
             object.mesh.traverseAncestors(function(mesh) {
                 if (mesh.object.meshes[type]) mesh.object.meshes[type].push(object.mesh);
                 else mesh.object.meshes[type] = [object.mesh];
             });
+            first = false;
         }
         object.mesh.traverseAncestors(function(mesh) {
             for (let type in object.meshes) if (object.meshes.hasOwnProperty(type)) {
@@ -107,7 +111,7 @@ class Scene extends GRASPObject {
         this.renderer.setPixelRatio(this.width / this.height);
         this.container = document.getElementById('content');
         this.container.appendChild(this.renderer.domElement);
-        this.camera = new THREE.PerspectiveCamera(60, this.width / this.height, 1, 10000);
+        this.camera = new THREE.PerspectiveCamera(60, this.width / this.height, 50, 10000);
         this.camera.position.z = 500;
 
         this.controls = new THREE.TrackballControls(this.camera);
@@ -153,10 +157,12 @@ class Scene extends GRASPObject {
         return this;
     }
     remove() {
-        // remove children
-        while (this.mesh.children.length > 1) {
-            this.mesh.children[this.mesh.children.length - 1].object.remove();
-        }
+        // remove everything
+        while (this.mesh.children.length > 1) this.mesh.children[this.mesh.children.length - 1].object.remove();
+        delete this.meshes;
+        this.meshes = [];
+        delete this.children;
+        this.children = [];
     }
     addPlane(index) {
         let plane = this.add(new Plane(), index);
@@ -267,12 +273,12 @@ class Scope extends GRASPObject {
         if (plane) {
             let level = plane.local_index;
             if (level == this.level) {
-                let new_plane = SCENE.children.Plane[level + 1] || SCENE.addPlane(level);
-                let new_scope = new_plane.add(new Scope(this.level + 1));
+                let new_plane = SCENE.children.Plane[level + 1] || SCENE.addPlane();
+                let new_scope = new_plane.add(new Scope(level + 1));
                 new_scope.parent_scope = this;
                 return new_scope;
             }
-            else console.error('levels don\'t match');
+            else console.error('levels don\'t match', level, this.level);
         }
         else console.error('scope does not have parent');
     }
@@ -346,8 +352,8 @@ class Node extends GRASPObject {
                 let real_label = null;
                 if (document.getElementById('labels').checked) real_label = label;
                 input = this.add(new Input(real_label, color, radius), index);
-                if (scope.scope[label]) scope.add(new Edge(value.addOutput(), input, COLORS.blue)).update();
-                else SCENE.add(new Edge(value.addOutput(), input, COLORS.blue)).update();
+                if (scope.scope[label]) scope.addEdge(value.addOutput(), input, COLORS.blue).update();
+                else SCENE.addEdge(value.addOutput(), input, COLORS.blue).update();
             }
             else input = this.add(new Input(label, color, radius), index);
         }
@@ -515,9 +521,11 @@ class Input extends Arg {
         //this.type = 'Input';
         color = color || COLORS.white;
         this.setColor(color);
+        this.label_text = label;
+        this.label = null;
+        this.width = 0;
         if (label) {
             this.label = this.add(new Label(label, 2 * radius));
-            this.label.setPosition(0, 0, 0);
             this.width = this.label.width;
         }
         return this;
@@ -613,7 +621,7 @@ function move(x, y) {
 
             DRAG_OBJECT.mesh.position.copy(intersect.point.sub(OFFSET));
             DRAG_OBJECT.mesh.position.z = 0;
-            if (DRAG_OBJECT.updateEdges) DRAG_OBJECT.updateEdges();
+            DRAG_OBJECT.updateEdges();
         }
         else if (DRAG_OBJECT instanceof Node) {
             // dragging off the scope
@@ -635,7 +643,7 @@ function move(x, y) {
                 OFFSET.x += (right - left) / 2;
                 OFFSET.y += (top - bottom) / 2;
                 DRAG_OBJECT.parent.extend(top, right, bottom, left);
-                if (DRAG_OBJECT.updateEdges) DRAG_OBJECT.updateEdges();
+                DRAG_OBJECT.updateEdges();
             }
         }
     }
@@ -679,8 +687,122 @@ function onMouseUp(event) {
 }
 function onMouseScroll(event) {}
 
+function updateForces() {
+    let node_constant = 10000;
+    let scope_constant = 100000;
+    let edge_constant = 0.1;
+    let max_force = 100;
+    let min_force = 1;
+    let extension_threshold = 1;
+    if (SCENE.children.Plane) for (let a = 0; a < SCENE.children.Plane.length; a++) {
+        let plane = SCENE.children.Plane[a];
+        if (plane.children.Scope) for (let b = 0; b < plane.children.Scope.length; b++) {
+            let scope = plane.children.Scope[b];
+            let scope_force = new THREE.Vector2(0, 0);
+
+            if (scope.children.Node) for (let c = 0; c < scope.children.Node.length; c++) {
+                let node = scope.children.Node[c];
+                if (node != DRAG_OBJECT) {
+                    // node repellent
+                    let node_force = new THREE.Vector2(0, 0);
+
+                    for (let d = 0; d < scope.children.Node.length; d++) if (c != d) {
+                        let sibling = scope.children.Node[d];
+                        let force = new THREE.Vector2().subVectors(node.position, sibling.position);
+                        let length = force.lengthSq();
+                        if (length < 0.001) force.x = 1;
+                        if (length < 1) length = 1;
+                        force.setLength(node_constant).divideScalar(length);
+                        node_force.add(force);
+                    }
+
+                    // edge spring
+                    if (node.children.Arg) for (let d = 0; d < node.children.Arg.length; d++) {
+                        let arg = node.children.Arg[d];
+                        if (arg.edge && arg.edge.parent == node.parent) {
+                            let sibling_arg = arg.edge.end == arg ? arg.edge.start : arg.edge.end;
+                            let sibling = sibling_arg.parent;
+                            let force = new THREE.Vector2().subVectors(sibling.position.clone().add(sibling_arg.position), node.position.clone().add(arg.position));
+                            node_force.add(force.multiplyScalar(edge_constant));
+                        }
+                    }
+
+                    if (node_force.length() > max_force) node_force.setLength(max_force);
+                    if (node_force.length() > min_force) {
+                        let new_x = node.mesh.position.x + node_force.x;
+                        let new_y = node.mesh.position.y + node_force.y;
+                        let border_x = node.parent.width / 2;
+                        let border_y = node.parent.height / 2;
+
+
+                        if (new_x > border_x) {
+                            // right overflow
+                            let overflow = new_x - border_x;
+                            if (overflow > extension_threshold) {
+                                node.parent.extend(0, overflow, 0, 0);
+                                node.mesh.position.x = new_x;
+                                if (DRAG_OBJECT) OFFSET.x += overflow / 2;
+                            }
+                        }
+                        else if (new_x < -border_x) {
+                            let overflow = -border_x - new_x;
+                            if (overflow > extension_threshold) {
+                                node.parent.extend(0, 0, 0, overflow);
+                                node.mesh.position.x = new_x;
+                                if (DRAG_OBJECT) OFFSET.x -= overflow / 2;
+                            }
+                            // left overflow
+                        }
+                        else node.mesh.position.x = new_x;
+                        if (new_y > border_y) {
+                            // top overflow
+                            let overflow = new_y - border_y;
+                            if (overflow > extension_threshold) {
+                                node.parent.extend(overflow, 0, 0, 0);
+                                node.mesh.position.y = new_y;
+                                if (DRAG_OBJECT) OFFSET.y += overflow / 2;
+                            }
+                        }
+                        else if (new_y < -border_y) {
+                            // bottom overflow
+                            let overflow = -border_y - new_y;
+                            if (overflow > extension_threshold) {
+                                node.parent.extend(0, 0, overflow, 0);
+                                node.mesh.position.y = new_y;
+                                if (DRAG_OBJECT) OFFSET.y -= overflow / 2;
+                            }
+                        }
+                        else node.mesh.position.y = new_y;
+
+                        node.updateEdges();
+                    }
+                }
+            }
+
+            // scope repellent
+            if (scope != DRAG_OBJECT)  for (let c = 0; c < plane.children.Scope.length; c++) if (b != c) {
+                let sibling = plane.children.Scope[c];
+                let force = new THREE.Vector2().subVectors(scope.position, sibling.position);
+                let length = force.lengthSq();
+                if (length < 0.001) force.x = 10;
+                if (length < 10) length = 10;
+                force.setLength(scope_constant).divideScalar(length);
+                scope_force.add(force);
+            }
+
+            if (scope_force.length() > max_force) scope_force.setLength(max_force);
+            if (scope_force.length() > min_force) {
+                scope.mesh.position.x += scope_force.x;
+                scope.mesh.position.y += scope_force.y;
+
+                scope.updateEdges();
+            }
+        }
+    }
+}
+
 function render() {
-    //updateForces();
+    updateForces();
     requestAnimationFrame(render);
     SCENE.controls.update();
     SCENE.renderer.render(SCENE.mesh, SCENE.camera);
@@ -691,4 +813,10 @@ var SCENE = new Scene();
 render();
 
 var PLANE = SCENE.add(new Plane());
-var SCOPE = PLANE.add(new Scope());
+var SCOPE = PLANE.add(new Scope(0));
+
+let bar = SCOPE.addVariable('foo');
+
+let node = SCOPE.addForm('foo');
+
+//node.setPosition(0, -10, 0);
