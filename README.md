@@ -4,6 +4,7 @@ It's easy to look at lines of code and think you know what programming is, but t
 
 - Functions are green
 - Variables are blue
+- Lexical environments are translucent
 - That's about it
 
 ![](https://raw.githubusercontent.com/joeltg/grasp/master/screenshots/0.png)
