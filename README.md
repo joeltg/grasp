@@ -9,7 +9,7 @@ It's easy to look at lines of code and think you know what programming is, but t
 
 ![](https://raw.githubusercontent.com/joeltg/grasp/master/screenshots/0.png)
 
-In GRASP, variables don't need to be named, since every reference links back to just one spatially unique node in the original scope in which it was defined. Similarly, functions also don't need labels, since they can link back to their original definitions. The "Labels" switch toggles these optional labels.
+In GRASP, variables don't need to be named, since every reference links back to just one spatially unique node in the original environment in which it was defined (thanks to lexial scoping). Similarly, functions also don't need labels, since they can link back to their original definitions. The "Labels" switch toggles these optional labels.
 
 ![](https://raw.githubusercontent.com/joeltg/grasp/master/screenshots/1.png)
 
