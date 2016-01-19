@@ -152,7 +152,7 @@ function add(data, scope) {
                     return form;
             }
         } else return console.error('first element in form was not a symbol', data);
-    } else return scope.addForm(data.source);
+    } else if (data.type == 'comment') return null;else return scope.addForm(data.source);
 }
 
 //# sourceMappingURL=app-compiled.js.map

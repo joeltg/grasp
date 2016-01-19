@@ -180,5 +180,6 @@ function add(data, scope) {
         }
         else return console.error('first element in form was not a symbol', data);
     }
+    else if (data.type == 'comment') return null;
     else return scope.addForm(data.source);
 }
