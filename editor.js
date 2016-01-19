@@ -1,3 +1,5 @@
+"use strict";
+
 var editor = ace.edit("editor");
 
 editor.setTheme("ace/theme/monokai");
