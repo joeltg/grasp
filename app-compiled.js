@@ -77,7 +77,7 @@ function lambda(params, body, scope) {
         let param = params[i];
         if (param.type == 'symbol') {
             let symbol = param.source;
-            let variable = new_scope.addVariable(symbol);
+            let variable = new_scope.addVariable(symbol, !document.getElementById('names').checked);
             SCENE.addEdge(l.add(new Input(symbol)), variable.addInput());
         } else return console.error('invalid params in lambda', data);
     }
@@ -97,7 +97,7 @@ function define(symbol, value, scope) {
         return console.error('invalid re-definition', symbol, value);
     } else {
         // new binding
-        let variable = scope.addVariable(symbol);
+        let variable = scope.addVariable(symbol, !document.getElementById('names').checked);
         if (value) {
             if (value.type == 'list') scope.addEdge(add(value, scope).output, variable.addInput());else variable.addInput(value.source);
         }
@@ -111,7 +111,7 @@ function letx(name, bindings, body, recursive, scope) {
     for (let i = 0; i < bindings.length; i++) {
         if (bindings[i].children.length == 2 && bindings[i].children[0].type == 'symbol') {
             let symbol = bindings[i].children[0].source;
-            let variable = new_scope.addVariable(symbol);
+            let variable = new_scope.addVariable(symbol, !document.getElementById('names').checked);
             if (bindings[i].children[1].type == 'list') {
                 // init value is expression
                 if (recursive) new_scope.addEdge(add(bindings[i].children[1], new_scope).output, variable.addInput());else SCENE.addEdge(add(bindings[i].children[1], scope).output, variable.addInput());
@@ -148,7 +148,7 @@ function add(data, scope) {
                     } else if (data.children.length > 2 && data.children[1].children[0].type == 'symbol' && data.children[1].type == 'list') {
                         // function definition
                         let l = lambda(data.children[1].children.slice(1), data.children.slice(2), scope);
-                        let variable = scope.addVariable(data.children[1].children[0].source);
+                        let variable = scope.addVariable(data.children[1].children[0].source, !document.getElementById('names').checked);
                         scope.addEdge(l.output, variable.addInput());
                         return l;
                     } else return console.error('invalid variable definition', data);
