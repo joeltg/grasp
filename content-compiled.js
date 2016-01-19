@@ -1,5 +1,3 @@
-"use strict";
-
 var MOUSE = new THREE.Vector3(0, 0, 0),
     OFFSET = new THREE.Vector2(0, 0);
 var EDITOR_WIDTH = 400 + 3,

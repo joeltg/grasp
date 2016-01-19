@@ -1,5 +1,3 @@
-"use strict";
-
 document.getElementById('calculate').addEventListener('click', calculate);
 
 document.getElementById('clear').addEventListener('click', clear);
