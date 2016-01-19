@@ -129,6 +129,18 @@ function letx(name, bindings, body, recursive, scope) {
 
 function add(data, scope) {
     if (data.type == 'list') {
+        for (var i = 0; i < data.children.length - 1; i++) {
+            var child = data.children[i];
+            if (child.type == 'symbol' && child.source == "'" && data.children[i + 1]) {
+                data.children.splice(i, 2, {
+                    type: 'list',
+                    children: [{ type: 'symbol', source: 'quote' }, data.children[i + 1]]
+                });
+            } else if (child.type == 'special' && child.source == '#' && data.children[i + 1].type == 'symbol') {
+                data.children.splice(i, 2, data.children[i + 1]);
+                data.children[i].source = '#' + data.children[i].source;
+            }
+        }
         if (data.children && data.children[0].type == 'symbol') {
             var source = data.children[0].source;
             switch (source) {
@@ -164,6 +176,19 @@ function add(data, scope) {
                         } else return console.error('could not locate set! reference');
                     }
                     return console.error('invalid set!', data);
+                case 'quote':
+                    var quote = scope.addForm(source);
+                    if (data.children.length == 2) {
+                        if (data.children[1].type == 'list') {
+                            // quoting list
+                            quote.add(new Input(editor.getValue().substring(data.children[1].start, data.children[1].end)));
+                        } else {
+                            // quoting atom
+                            quote.add(new Input(data.children[1].source));
+                        }
+                        quote.updateSize();
+                        return quote;
+                    } else return console.error('invalid quote');
                 default:
                     var form = scope.addForm(source);
                     for (var i = 1; i < data.children.length; i++) {
