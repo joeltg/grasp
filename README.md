@@ -1,6 +1,6 @@
 GRASP
 ================
-It's easy to look at lines of code and think you know what programming is, but text is only one of many possible representations. GRASP visualizes Scheme ASTs with as little text as possible, using a force-directed 3D graph to organize the program's structure. Data transformation happens laterally with functions, while references and variable scoping happen vertically.
+It's easy to look at lines of code and think you know what programming is, but text is only one of many possible representations. GRASP visualizes Scheme ASTs with as little text as possible, using a force-directed 3D graph to organize the program's structure. Data transformation happens laterally with functions, while references and variable scoping are organized vertically.
 
 ![](https://raw.githubusercontent.com/joeltg/grasp/master/screenshots/0.png)
 
