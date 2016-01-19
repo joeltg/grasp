@@ -426,7 +426,7 @@ class Variable extends Node {
         this.updateSize();
     }
     updateSize() {
-        let text_width = this.label.width;
+        let text_width = this.label ? this.label.width : 0;
         let input_width = 0;
         if (this.children.Input) for (let i = 0; i < this.children.Input.length; i++) input_width += this.children.Input[i].width + ARG_SPACING;
         let output_length = this.children.Output ? this.children.Output.length : 0;

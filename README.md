@@ -2,9 +2,14 @@ GRASP
 ================
 It's easy to look at lines of code and think you know what programming is, but text is only one of many possible representations. GRASP visualizes Scheme ASTs with as little text as possible, using a force-directed 3D graph to organize the program's structure. Data transformation happens laterally with functions, while references and variable scoping are organized vertically.
 
+- Functions are green
+- Variables are blue
+- Lexical environments are translucent
+- That's about it
+
 ![](https://raw.githubusercontent.com/joeltg/grasp/master/screenshots/0.png)
 
-In GRASP, variables don't need to be named, since every reference links back to just one spatially unique node in the original scope in which it was defined. Similarly, functions also don't need labels, since they can link back to their original definitions. The "Labels" switch toggles these optional labels.
+In GRASP, variables don't need to be named, since every reference links back to just one spatially unique node in the original environment in which it was defined (thanks to lexial scoping). Similarly, functions also don't need labels, since they can link back to their original definitions. The "Labels" switch toggles these optional labels.
 
 ![](https://raw.githubusercontent.com/joeltg/grasp/master/screenshots/1.png)
 
@@ -15,7 +20,7 @@ Well, no. It isn't.
 All the visual "languages" that exist are shallow wrappers around inherently textual code, and usually end up requiring the user to type just as many characters to do the same thing, or (worse!) expose some pre-selected GUI toolbox of all the functions you can drag-and-drop. The goal of GRASP is to eliminate the keyboard altogether, and enable open-ended program construction in an interactive, intuitive manner that scales with program complexity and size. It seems subtle, but the difference is very fundamental.
 
 ##Wait, the graph looks harder to understand than the code
-It probably does! That's because 1) this is in pre-alpha and I haven't got the graphics to work well, but mostly 2) you've spent n years staring enormous text files of code and your brain has trained for ages to parse it. For large n, it actually gets more difficult to think about programs in new contexts or in new representations: as Marvin Minsky once said, "anyone could learn Lisp in one day, except that if they already knew Fortran, it would take three days." 
+It probably does! That's because 1) this is in pre-alpha and I haven't got the graphics to work well, but mostly 2) you've spent n years staring enormous text files of code and your brain has trained for ages to parse it. For large n, it actually gets more difficult to think about programs in new contexts or in new representations: as Marvin Minsky once said, "anyone could learn Lisp in one day, except that if they already knew Fortran, it would take three days." In the same way, I've found that anyone can understand GRASP in just a few hours, unless they already know how to code, in which case they might never understand it.
 
 Grab the nearest non-coder and see if they 'get' GRASP. You might be surprised.
 

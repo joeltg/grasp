@@ -8,6 +8,8 @@ document.getElementById('center').addEventListener('click', center);
 
 document.getElementById('labels').addEventListener('click', toggleLabels);
 
+document.getElementById('names').addEventListener('click', toggleNames);
+
 function center() {
     SCENE.camera.position.set(0, 0, 500);
     SCENE.camera.up = new THREE.Vector3(0,1,0);
@@ -46,6 +48,26 @@ function toggleLabels() {
                     input.width = 0;
                     input.parent.updateSize();
                 }
+            }
+        }
+    }
+}
+
+function toggleNames() {
+    let names = document.getElementById('names').checked;
+    if (SCENE.meshes.Variable) for (let i = 0; i < SCENE.meshes.Variable.length; i++) {
+        let variable = SCENE.meshes.Variable[i].object;
+        if (names) {
+            if (!variable.label) {
+                variable.label = variable.add(new Text(variable.name));
+                variable.updateSize();
+            }
+        }
+        else {
+            if (variable.label) {
+                variable.label.remove();
+                variable.label = null;
+                variable.updateSize();
             }
         }
     }
