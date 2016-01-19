@@ -814,9 +814,3 @@ render();
 
 var PLANE = SCENE.add(new Plane());
 var SCOPE = PLANE.add(new Scope(0));
-
-let bar = SCOPE.addVariable('foo');
-
-let node = SCOPE.addForm('foo');
-
-//node.setPosition(0, -10, 0);
