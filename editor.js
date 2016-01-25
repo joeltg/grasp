@@ -15,7 +15,9 @@ editor.setOptions({
 editor.setValue(';; Welcome to GRASP!' +
     '\n;; Go ahead and write Scheme code here,\n' +
     ';; and then hit \'Calculate\'.\n\n' +
-    ';; Variables are blue. Functions are green.\n\n' +
+    ';; Variables are blue.\n' +
+    ';; Functions are green.\n' +
+    ';; Environments are translucent.\n\n' +
     ';; Not every Scheme special form has cool\n' +
     ';; custom 3D visual syntax - right now\n' +
     ';; it\'s only let[*/rec], lambda, define,\n' +
