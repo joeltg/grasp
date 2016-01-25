@@ -550,6 +550,7 @@ var Form = (function (_Node) {
             } else console.error('form has no inputs');
             // position return output if it exists
             if (this.children.Output && this.children.Output.length > 1) this.children.Output[1].setPosition(this.width / 2, 0, ARG_ELEVATION);
+            this.updateEdges();
         }
     }]);
 
@@ -613,6 +614,7 @@ var Variable = (function (_Node2) {
                 if (output.edge) output.edge.update();
             }
             this.setSize(width, this.height);
+            this.updateEdges();
         }
     }]);
 
