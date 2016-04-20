@@ -15,11 +15,11 @@ In GRASP, variables don't need to be named, since every reference links back to 
 
 GRASP is an ongoing project. The project's long-term goal is to eliminate the need for text entirely (changing the mindset to optionally "labeling" nodes to be searchable later), and implement a completely visual Scheme IDE in imersive VR, but right now I'm working on making the graph editable directly by dragging edges from node to node while reflecting those changes dynamically in the textual code, and working on integrating a Scheme to JavaScript interpreter to visualize data flow in program execution step-by-step or in real-time.
 
-##Wait, this is just like every other visual programming thing I've seen
+###Wait, this is just like every other visual programming thing I've seen
 Well, no. It isn't.
 All the visual "languages" that exist are shallow wrappers around inherently textual code, and usually end up requiring the user to type just as many characters to do the same thing, or (worse!) expose some pre-selected GUI toolbox of all the functions you can drag-and-drop. The goal of GRASP is to eliminate the keyboard altogether, and enable open-ended program construction in an interactive, intuitive manner that scales with program complexity and size. It seems subtle, but the difference is very fundamental.
 
-##Wait, the graph looks harder to understand than the code
+###Wait, the graph looks harder to understand than the code
 It probably does! That's because 1) this is in pre-alpha and I haven't got the graphics to work well, but mostly 2) you've spent n years staring enormous text files of code and your brain has trained for ages to parse it. For large n, it actually gets more difficult to think about programs in new contexts or in new representations: as Marvin Minsky once said, "anyone could learn Lisp in one day, except that if they already knew Fortran, it would take three days."
 
 Grab the nearest non-coder and see if they 'get' GRASP. You might be surprised.
