@@ -1,10 +1,16 @@
 "use strict";
 
-document.getElementById('calculate').addEventListener('click', calculate);
-document.getElementById('clear').addEventListener('click', clear);
-document.getElementById('center').addEventListener('click', center);
-document.getElementById('labels').addEventListener('click', toggleLabels);
-document.getElementById('names').addEventListener('click', toggleNames);
+// document.getElementById('calculate').addEventListener('click', calculate);
+// document.getElementById('clear').addEventListener('click', clear);
+// document.getElementById('center').addEventListener('click', center);
+// document.getElementById('labels').addEventListener('click', toggleLabels);
+// document.getElementById('names').addEventListener('click', toggleNames);
+
+// const Interpreter = new BiwaScheme.Interpreter();
+
+// const NAMES = !document.getElementById('names').checked;
+
+const NAMES = true;
 
 function center() {
     SCENE.camera.position.set(0, 0, 500);
@@ -12,17 +18,20 @@ function center() {
     SCENE.camera.lookAt(new THREE.Vector3(0,0,0));
     SCENE.controls.target.set(0, 0, 0);
 }
+
 function clear() {
     SCENE.remove();
     PLANE = SCENE.addPlane();
     SCOPE = PLANE.add(new Scope());
 }
+
 function calculate() {
     clear();
-    let text = editor.getValue();
-    let data = paredit.parse(text);
-    if (data.errors.length > 0) console.error(data);
-    else for (let i = 0; i < data.children.length; i++) add(data.children[i], SCOPE);
+    let text = cm.getValue();
+    let data = Interpreter.read(text);
+    // if (data.errors.length > 0) console.error(data);
+    // else for (let i = 0; i < data.children.length; i++) add(data.children[i], SCOPE);
+    console.log(data);
 }
 
 function toggleLabels() {
@@ -72,39 +81,40 @@ function toggleNames() {
 function lambda(params, body, scope) {
     let l = scope.addForm('λ');
     let new_scope = scope.addScope();
-    for (let i = 0; i < params.length; i++) {
-        let param = params[i];
-        if (param.type == 'symbol') {
-            let symbol = param.source;
-            let variable = new_scope.addVariable(symbol, !document.getElementById('names').checked);
+    for (let pair = params; Sussman.is_pair(pair); pair = pair.cdr) {
+        const param = pair.car;
+        if (Sussman.is_symbol(param)) {
+            const symbol = param.value;
+            const variable = new_scope.addVariable(symbol, NAMES);
             SCENE.addEdge(l.add(new Input(symbol)), variable.addInput());
         }
         else return console.error('invalid params in lambda', data);
     }
     let child;
-    for (let i = 0; i < body.length; i++) child = add(body[i], new_scope);
+    for (let pair = body; Sussman.is_pair(pair); pair = pair.cdr)
+        child = add(pair.car, new_scope);
     if (child) SCENE.addEdge(l.addOutput(), child.output);
     else return console.error('lambda had no body', body);
     return l;
 }
 
 function define(symbol, value, scope) {
-    let reference = scope.findBinding(symbol);
+    let reference = scope.findBinding(symbol.value);
     if (reference) {
         // binding already exists
         if (value) {
             if (value.type == 'list') scope.addEdge(add(value, scope).output, reference.addInput());
-            else reference.addInput(value.source);
+            else reference.addInput(value.value);
         }
-        return console.error('invalid re-definition', symbol, value);
+        return console.error('re-definition', symbol, value);
     }
     else {
         // new binding
-        let variable = scope.addVariable(symbol, !document.getElementById('names').checked);
+        let variable = scope.addVariable(symbol.value, NAMES);
         if (value) {
-            if (value.type == 'list')
+            if (Sussman.is_pair(value))
                 scope.addEdge(add(value, scope).output, variable.addInput());
-            else variable.addInput(value.source);
+            else variable.addInput(value.value);
         }
         return variable;
     }
@@ -113,122 +123,74 @@ function define(symbol, value, scope) {
 function letx(name, bindings, body, recursive, scope) {
     let l = scope.addForm(name);
     let new_scope = scope.addScope();
-    for (let i = 0; i < bindings.length; i++) {
-        if (bindings[i].children.length == 2 && bindings[i].children[0].type == 'symbol') {
-            let symbol = bindings[i].children[0].source;
-            let variable = new_scope.addVariable(symbol, !document.getElementById('names').checked);
-            if (bindings[i].children[1].type == 'list') {
-                // init value is expression
-                if (recursive) new_scope.addEdge(add(bindings[i].children[1], new_scope).output, variable.addInput());
-                else SCENE.addEdge(add(bindings[i].children[1], scope).output, variable.addInput());
-            }
-            else {
-                // init value is atom
-                variable.addInput(bindings[i].children[1].source);
-            }
-        } else console.error('invalid let binding');
+    for (let pair = bindings; Sussman.is_pair(pair); pair = pair.cdr) {
+        let binding = pair.car;
+        let symbol = binding.car.value;
+        let variable = new_scope.addVariable(symbol, NAMES);
+        if (Sussman.is_pair(binding.cdr.car)) {
+            if (recursive) new_scope.addEdge(add(binding.cdr.car, new_scope).output, variable.addInput());
+            else SCENE.addEdge(add(binding.cdr.car, scope).output, variable.addInput());
+        }
+        else variable.addInput(binding.cdr.car.value);
     }
-    let child;
-    for (let i = 0; i < body.length; i++) child = add(body[i], new_scope);
-    if (child) SCENE.addEdge(l.addOutput(), child.output);
+    let output = false;
+    for (let pair = body; Sussman.is_pair(pair); pair = pair.cdr) {
+        const expr = pair.car;
+        if (Sussman.is_pair(expr)) {
+            output = add(expr, new_scope).output;
+        } else {
+            // panic
+            output = new_scope.findBinding(expr.value).addOutput();
+        }
+    }
+    if (output) SCENE.addEdge(l.addOutput(), output);
     else return console.error('let had no body', body);
     return l;
 }
 
 function add(data, scope) {
-    if (data.type == 'list') {
-        for (let i = 0; i < data.children.length - 1; i++) {
-            let child = data.children[i];
-            if (child.type == 'symbol' && child.source == "'" && data.children[i + 1]) {
-                data.children.splice(i, 2, {
-                    type: 'list',
-                    children: [
-                        {type: 'symbol', source: 'quote'},
-                        data.children[i + 1]
-                    ]
-                });
-            }
-            else if (child.type == 'special' && child.source == '#' && data.children[i + 1].type == 'symbol') {
-                data.children.splice(i, 2, data.children[i + 1]);
-                data.children[i].source = '#' + data.children[i].source;
-            }
+    if (Sussman.is_pair(data)) {
+        switch (data.car.value) {
+            case 'lambda':
+                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr))
+                    return lambda(data.cdr.car, data.cdr.cdr, scope);
+                else return console.error('invalid lambda', data);
+            case 'let':
+                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr))
+                    return letx('let', data.cdr.car, data.cdr.cdr, false, scope);
+                else return console.error('invalid let', data);
+            case 'letrec':
+                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr))
+                    return letx('letrec', data.cdr.car, data.cdr.cdr, true, scope);
+                else return console.error('invalid letrec', data);
+            case 'let*':
+                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr))
+                    return letx('let*', data.cdr.car, data.cdr.cdr, true, scope);
+                else return console.error('invalid let*', data);
+            case 'define':
+                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr)) {
+                    const symbol = data.cdr.car;
+                    const value = data.cdr.cdr.car;
+                    return define(symbol, value, scope);
+                } else return console.error('invalid define', data);
+            case 'set!':
+                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr)) {
+                    const symbol = data.cdr.car;
+                    const value = data.cdr.cdr.car;
+                    const reference = scope.findBinding(symbol.value);
+                    if (reference) {
+                        if (Sussman.is_pair(value)) scope.addEdge(add(value, scope).output, reference.addInput());
+                        else reference.addInput(value.value);
+                        return reference;
+                    } else return console.error('cannot find set! binding', data)
+                } else return console.error('invalid set!', data);
+            default:
+                const form = scope.addForm(data.car.value);
+                for (let pair = data.cdr; Sussman.is_pair(pair); pair = pair.cdr) {
+                    if (Sussman.is_pair(pair.car)) scope.addEdge(add(pair.car, scope).output, form.addInput());
+                    else form.addInput(pair.car.value);
+                }
+                return form;
         }
-        if (data.children && data.children[0].type == 'symbol') {
-            let source = data.children[0].source;
-            switch (source) {
-                case 'lambda':
-                    if (data.children.length > 2 && data.children[1].type == 'list')
-                        return lambda(data.children[1].children, data.children.slice(2), scope);
-                    else return console.error('invalid lambda', data);
-                case 'let':
-                    if (data.children.length > 2 && data.children[1].type == 'list')
-                        return letx('let', data.children[1].children, data.children.slice(2), false, scope);
-                    else return console.error('invalid let', data);
-                case 'let*':
-                    if (data.children.length > 2 && data.children[1].type == 'list')
-                        return letx('let*', data.children[1].children, data.children.slice(2), true, scope);
-                    else return console.error('invalid let*', data);
-                case 'letrec':
-                    if (data.children.length > 2 && data.children[1].type == 'list')
-                        return letx('letrec', data.children[1].children, data.children.slice(2), true, scope);
-                    else return console.error('invalid letrec', data);
-                case 'define':
-                    if (data.children.length > 1 && data.children[1].type == 'symbol') {
-                        let symbol = data.children[1].source;
-                        let value = data.children[2];
-                        return define(symbol, value, scope);
-                    }
-                    else if (data.children.length > 2 &&
-                        data.children[1].children[0].type == 'symbol' &&
-                        data.children[1].type == 'list') {
-                        // function definition
-                        let l = lambda(data.children[1].children.slice(1), data.children.slice(2), scope);
-                        let variable = scope.addVariable(data.children[1].children[0].source, !document.getElementById('names').checked);
-                        scope.addEdge(l.output, variable.addInput());
-                        return l;
-                    }
-                    else return console.error('invalid variable definition', data);
-                    break;
-                case 'set!':
-                    if (data.children.length > 2 && data.children[1].type == 'symbol') {
-                        let symbol = data.children[1].source;
-                        let reference = scope.findBinding(symbol);
-                        if (reference) {
-                            let value = data.children[2];
-                            if (value.type == 'list') scope.addEdge(add(value, scope).output, reference.addInput());
-                            else reference.addInput(value.source);
-                            return reference;
-                        }
-                        else return console.error('could not locate set! reference');
-                    }
-                    return console.error('invalid set!', data);
-                case 'quote':
-                    let quote = scope.addForm(source);
-                    if (data.children.length == 2) {
-                        if (data.children[1].type == 'list') {
-                            // quoting list
-                            quote.add(new Input(editor.getValue().substring(data.children[1].start, data.children[1].end)));
-                        }
-                        else {
-                            // quoting atom
-                            quote.add(new Input(data.children[1].source));
-                        }
-                        quote.updateSize();
-                        return quote;
-                    }
-                    else return console.error('invalid quote');
-                default:
-                    let form = scope.addForm(source);
-                    for (let i = 1; i < data.children.length; i++) {
-                        let child = data.children[i];
-                        if (child.type == 'list') scope.addEdge(add(child, scope).output, form.addInput());
-                        else form.addInput(child.source);
-                    }
-                    return form;
-            }
-        }
-        else return console.error('first element in form was not a symbol', data);
-    }
-    else if (data.type == 'comment') return null;
-    else return scope.addForm(data.source);
+    } else return scope.addForm(data.value);
 }

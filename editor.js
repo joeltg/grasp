@@ -1,18 +1,6 @@
 "use strict";
 
-var editor = ace.edit("editor");
-
-editor.setTheme("ace/theme/monokai");
-editor.getSession().setMode("ace/mode/scheme");
-editor.$blockScrolling = Infinity;
-
-editor.setOptions({
-    highlightActiveLine: false,
-    showPrintMargin: false,
-    fontSize: 16
-});
-
-editor.setValue(';; Welcome to GRASP!' +
+const defaultText = ';; Welcome to GRASP!' +
     '\n;; Go ahead and write Scheme code here,\n' +
     ';; and then hit \'Calculate\'.\n\n' +
     ';; Variables are blue.\n' +
@@ -28,13 +16,41 @@ editor.setValue(';; Welcome to GRASP!' +
     ';; and right-click and drag to rotate\n' +
     ';; the view.\n\n' +
     '(define (foo x y)\n' +
-    '    (+ x y))\n' +
-    '(foo 4 (+ 2 5))');
+    '  (+ x y))\n' +
+    '(foo 4 (+ 2 5))\n';
 
-editor.clearSelection();
+const editor = document.getElementById('editor');
 
-editor.getSession().on('change', function(e) {
-    // e.type, etc
+const cm = CodeMirror(editor, {
+    value: defaultText,
+    mode:  "scheme",
+    theme: 'monokai',
+    autoCloseBrackets: true,
+    matchBrackets: true,
+    indentUnit: 2,
+    indentWithTabs: false,
+    keyMap: 'sublime'
 });
 
-editor.focus();
+function evaluate() {
+    clear();
+    const text = cm.getValue().split('\n').map(line => {
+        const index = line.indexOf(';;');
+        return line.substring(0, index > -1 ? index : line.length);
+    }).filter(l => l.length > 0).join('');
+
+    const parser = new SParser(text);
+    for (let expr = parser.expr(); expr; expr = parser.expr()) {
+        add(expr, SCOPE);
+    }
+}
+
+cm.setOption('extraKeys', {
+    "Tab": "indentMore",
+    "Cmd-Enter": evaluate,
+    "Ctrl-Enter": evaluate,
+    "Shift-Enter": evaluate,
+    "Ctrl-S": null
+});
+
+cm.setSize(null, window.innerHeight);
