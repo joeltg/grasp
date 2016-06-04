@@ -31,13 +31,8 @@ function getMouseY(y) {
 }
 
 function down(x, y) {
-    console.log(x, y);
-    // MOUSE.x = ((x - SCENE.width) / (window.innerWidth - SCENE.width)) * 2 - 1;
-    // MOUSE.y = - (y / window.innerHeight ) * 2 + 1;
     MOUSE.x = getMouseX(x);
     MOUSE.y = getMouseY(y);
-    console.log(MOUSE.x, MOUSE.y);
-    console.log('------');
     SCENE.raycaster.setFromCamera(MOUSE, SCENE.camera);
 
     const intersects = SCENE.raycaster.intersectObjects(SCENE.meshes.GRASPObject || []);
@@ -54,8 +49,6 @@ function down(x, y) {
 }
 
 function move(x, y) {
-    // MOUSE.x = ((x - SCENE.width) / (window.innerWidth - SCENE.width)) * 2 - 1;
-    // MOUSE.y = - (y / window.innerHeight ) * 2 + 1;
     MOUSE.x = getMouseX(x);
     MOUSE.y = getMouseY(y);
     SCENE.raycaster.setFromCamera(MOUSE, SCENE.camera);

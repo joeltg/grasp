@@ -57,6 +57,11 @@ class cons {
             `(${this.car.to_string()} ${this.cdr.to_string().substring(1)})`:
             `(${this.car.to_string()} . ${this.cdr.to_string()})`
     }
+    to_array() {
+        const array = [];
+        this.for_each(car => array.push(car));
+        return array;
+    }
     get length() {return 1 + this.cdr.length}
 
     map(f) { return new cons(f(this.car), S.is_pair(this.cdr) ? this.cdr.map(f) : S.null) }
@@ -119,11 +124,18 @@ class named_procedure extends procedure {
     }
 }
 
+const top_level_environment = new environment({});
+
 class primitive_procedure extends procedure {
     constructor(f) {
         super(null, null, top_level_environment);
         this.apply = args => f(args, this.environment);
     }
+}
+
+function make_primitive_procedure(f, type) {
+    return new primitive_procedure(args =>
+        new type(f.apply(null, args.to_array().map(arg => arg.value))));
 }
 
 const S = {
@@ -157,11 +169,23 @@ const S = {
     is_primitive_procedure: a => a instanceof procedure,
     is_named_procedure: a => a instanceof procedure,
 
+    every(f, list) {
+        for (let pair = list; this.is_pair(pair); pair = pair.cdr)
+            if (!f(pair.car)) return false;
+        return true;
+    },
+    any(f, list) {
+        for (let pair = list; this.is_pair(pair); pair = pair.cdr)
+            if (f(pair.car)) return true;
+        return false;
+    },
     map(f, lists) {
         const cars = lists.map(a => a.car);
         const cdrs = lists.map(a => a.cdr);
         const elem = f.apply(cars);
-        return new cons(elem, this.map(f, cdrs));
+        if (this.every(cdr => this.is_pair(cdr)))
+            return new cons(elem, this.map(f, cdrs));
+        return new cons(elem, this.null);
     },
 
     zip(lists) {
@@ -171,18 +195,21 @@ const S = {
     eval(exp, env) {
         if (this.is_pair(exp)) {
             const f = exp.car, args = exp.cdr;
+            let bindings, body, let_env, result;
             if (this.is_symbol(f)) switch (f.value) {
                 case 'lambda':
                     return new procedure(args.car, args.cdr, env);
                 case 'let':
-                    const bindings = args.car, body = args.cdr;
-                    const let_env = new environment({}, env);
+                    bindings = args.car;
+                    body = args.cdr;
+                    let_env = new environment({}, env);
                     bindings.for_each(binding =>
                         let_env.bind(binding.car, this.eval(binding.cdr.car, env)));
                     return body.reduce(this.unspecified, (pre, exp) => this.eval(exp, let_env));
                 case 'let*':
-                    const bindings = args.car, body = args.cdr;
-                    const let_env = new environment({}, env);
+                    bindings = args.car;
+                    body = args.cdr;
+                    let_env = new environment({}, env);
                     bindings.for_each(binding =>
                         let_env.bind(binding,car, this.eval(binding.cdr.car, let_env)));
                     return body.reduce(this.unspecified, (pre, exp) => this.eval(exp, let_env));
@@ -195,14 +222,12 @@ const S = {
                         this.eval(args.cdr.car, env) :
                         this.eval(args.cdr.cdr.car, env);
                 case 'and':
-                    let result;
                     for (let pair = args; this.is_pair(pair); pair = pair.cdr) {
                         result = this.eval(pair.car, env);
                         if (this.is_false(result)) return this.false;
                     }
                     return result;
                 case 'or':
-                    let result;
                     for (let pair = args; this.is_pair(pair); pair = pair.cdr) {
                         result = this.eval(pair.car, env);
                         if (this.is_true(result)) return result;
@@ -224,6 +249,7 @@ const top_level_bindings = {
     car: new primitive_procedure(args => args.car.car),
     cdr: new primitive_procedure(args => args.car.cdr),
     cons: new primitive_procedure(args => new cons(args.car, args.cdr.car)),
+    list: new primitive_procedure(args => args),
     'set-car!': new primitive_procedure(args => {
         args.car.car = args.cdr.car;
         return S.unspecified;
@@ -231,6 +257,12 @@ const top_level_bindings = {
     'set-cdr!': new primitive_procedure(args => {
         args.car.cdr = args.cdr.car;
         return S.unspecified;
+    }),
+
+    map: new primitive_procedure(args => {
+        const f = args.car;
+        const lists = args.cdr;
+        return S.map()
     }),
 
     'eq?': new primitive_procedure(args => S.bool(args.car.eq(args.cdr.car))),
@@ -252,4 +284,26 @@ const top_level_bindings = {
 
 };
 
-const top_level_environment = new environment(top_level_bindings);
+[
+    'sin',
+    'cos',
+    'tan',
+    'asin',
+    'acos',
+    'atan',
+    'exp',
+    'log',
+    'abs',
+    'pow'
+].forEach(f => top_level_bindings[f] = make_primitive_procedure(Math[f], number));
+
+//(top_level_bindings);
+Object.keys(top_level_bindings).forEach(key => {
+    top_level_environment.bindings[key] = top_level_bindings[key];
+});
+
+function eval(string) {
+    const p = new parser(string);
+    const r = S.eval(p.expr(), top_level_environment);
+    return r;
+}

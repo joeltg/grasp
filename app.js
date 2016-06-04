@@ -26,12 +26,13 @@ function clear() {
 }
 
 function calculate() {
-    clear();
-    let text = cm.getValue();
-    let data = Interpreter.read(text);
-    // if (data.errors.length > 0) console.error(data);
-    // else for (let i = 0; i < data.children.length; i++) add(data.children[i], SCOPE);
-    console.log(data);
+    const text = cm.getValue().split('\n').map(line => {
+        const index = line.indexOf(';;');
+        return line.substring(0, index > -1 ? index : line.length);
+    }).filter(l => l.length > 0).join('');
+    const parser = new SParser(text);
+    for (let expr = parser.expr(); expr; expr = parser.expr())
+        add(expr, SCOPE);
 }
 
 function toggleLabels() {
@@ -81,9 +82,9 @@ function toggleNames() {
 function lambda(params, body, scope) {
     let l = scope.addForm('λ');
     let new_scope = scope.addScope();
-    for (let pair = params; Sussman.is_pair(pair); pair = pair.cdr) {
+    for (let pair = params; S.is_pair(pair); pair = pair.cdr) {
         const param = pair.car;
-        if (Sussman.is_symbol(param)) {
+        if (S.is_symbol(param)) {
             const symbol = param.value;
             const variable = new_scope.addVariable(symbol, NAMES);
             SCENE.addEdge(l.add(new Input(symbol)), variable.addInput());
@@ -91,7 +92,7 @@ function lambda(params, body, scope) {
         else return console.error('invalid params in lambda', data);
     }
     let child;
-    for (let pair = body; Sussman.is_pair(pair); pair = pair.cdr)
+    for (let pair = body; S.is_pair(pair); pair = pair.cdr)
         child = add(pair.car, new_scope);
     if (child) SCENE.addEdge(l.addOutput(), child.output);
     else return console.error('lambda had no body', body);
@@ -112,7 +113,7 @@ function define(symbol, value, scope) {
         // new binding
         let variable = scope.addVariable(symbol.value, NAMES);
         if (value) {
-            if (Sussman.is_pair(value))
+            if (S.is_pair(value))
                 scope.addEdge(add(value, scope).output, variable.addInput());
             else variable.addInput(value.value);
         }
@@ -123,20 +124,20 @@ function define(symbol, value, scope) {
 function letx(name, bindings, body, recursive, scope) {
     let l = scope.addForm(name);
     let new_scope = scope.addScope();
-    for (let pair = bindings; Sussman.is_pair(pair); pair = pair.cdr) {
+    for (let pair = bindings; S.is_pair(pair); pair = pair.cdr) {
         let binding = pair.car;
         let symbol = binding.car.value;
         let variable = new_scope.addVariable(symbol, NAMES);
-        if (Sussman.is_pair(binding.cdr.car)) {
+        if (S.is_pair(binding.cdr.car)) {
             if (recursive) new_scope.addEdge(add(binding.cdr.car, new_scope).output, variable.addInput());
             else SCENE.addEdge(add(binding.cdr.car, scope).output, variable.addInput());
         }
         else variable.addInput(binding.cdr.car.value);
     }
     let output = false;
-    for (let pair = body; Sussman.is_pair(pair); pair = pair.cdr) {
+    for (let pair = body; S.is_pair(pair); pair = pair.cdr) {
         const expr = pair.car;
-        if (Sussman.is_pair(expr)) {
+        if (S.is_pair(expr)) {
             output = add(expr, new_scope).output;
         } else {
             // panic
@@ -149,45 +150,45 @@ function letx(name, bindings, body, recursive, scope) {
 }
 
 function add(data, scope) {
-    if (Sussman.is_pair(data)) {
+    if (S.is_pair(data)) {
         switch (data.car.value) {
             case 'lambda':
-                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr))
+                if (S.is_pair(data.cdr) && S.is_pair(data.cdr.cdr))
                     return lambda(data.cdr.car, data.cdr.cdr, scope);
                 else return console.error('invalid lambda', data);
             case 'let':
-                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr))
+                if (S.is_pair(data.cdr) && S.is_pair(data.cdr.cdr))
                     return letx('let', data.cdr.car, data.cdr.cdr, false, scope);
                 else return console.error('invalid let', data);
             case 'letrec':
-                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr))
+                if (S.is_pair(data.cdr) && S.is_pair(data.cdr.cdr))
                     return letx('letrec', data.cdr.car, data.cdr.cdr, true, scope);
                 else return console.error('invalid letrec', data);
             case 'let*':
-                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr))
+                if (S.is_pair(data.cdr) && S.is_pair(data.cdr.cdr))
                     return letx('let*', data.cdr.car, data.cdr.cdr, true, scope);
                 else return console.error('invalid let*', data);
             case 'define':
-                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr)) {
+                if (S.is_pair(data.cdr) && S.is_pair(data.cdr.cdr)) {
                     const symbol = data.cdr.car;
                     const value = data.cdr.cdr.car;
                     return define(symbol, value, scope);
                 } else return console.error('invalid define', data);
             case 'set!':
-                if (Sussman.is_pair(data.cdr) && Sussman.is_pair(data.cdr.cdr)) {
+                if (S.is_pair(data.cdr) && S.is_pair(data.cdr.cdr)) {
                     const symbol = data.cdr.car;
                     const value = data.cdr.cdr.car;
                     const reference = scope.findBinding(symbol.value);
                     if (reference) {
-                        if (Sussman.is_pair(value)) scope.addEdge(add(value, scope).output, reference.addInput());
+                        if (S.is_pair(value)) scope.addEdge(add(value, scope).output, reference.addInput());
                         else reference.addInput(value.value);
                         return reference;
                     } else return console.error('cannot find set! binding', data)
                 } else return console.error('invalid set!', data);
             default:
                 const form = scope.addForm(data.car.value);
-                for (let pair = data.cdr; Sussman.is_pair(pair); pair = pair.cdr) {
-                    if (Sussman.is_pair(pair.car)) scope.addEdge(add(pair.car, scope).output, form.addInput());
+                for (let pair = data.cdr; S.is_pair(pair); pair = pair.cdr) {
+                    if (S.is_pair(pair.car)) scope.addEdge(add(pair.car, scope).output, form.addInput());
                     else form.addInput(pair.car.value);
                 }
                 return form;

@@ -7,6 +7,7 @@ let DRAG_OBJECT;
 // const LABELS = document.getElementById('labels').checked;
 const LABELS = true;
 
+
 const COLORS = {
     green: 0x119955,
     white: 0xffffff,
@@ -290,8 +291,8 @@ class Scope extends GRASPObject {
             if (scope.scope[label]) return scope.scope[label];
         return null;
     }
-    addVariable(name, hide_label) {
-        const variable = this.add(new Variable(name, hide_label));
+    addVariable(name, show_label) {
+        const variable = this.add(new Variable(name, show_label));
         this.scope[name] = variable;
         return variable;
     }
@@ -401,13 +402,13 @@ class Form extends Node {
 }
 
 class Variable extends Node {
-    constructor(name, hide_label) {
+    constructor(name, show_label) {
         super();
         //this.type = 'Variable';
         this.setColor(COLORS.blue);
         this.name = name;
-        if (hide_label) this.label = null;
-        else this.label = this.add(new Text(name, 10, 5.1));
+        if (show_label) this.label = this.add(new Text(name, 10, 5.1));
+        else this.label = null;
         this.updateSize();
         return this;
     }
