@@ -3,7 +3,7 @@ const not_whitespace_or_end = /^(\S|$)/;
 const space_quote_paren_escaped_or_end = /^(\s|\\|"|'|`|,|\(|\)|$)/;
 const string_or_escaped_or_end = /^(\\|"|$)/;
 const quotes = /('|`|,)/;
-const number = /^(([0-9]+.?[0-9]*)|([0-9]*.?[0-9]+))(e[0-9]+)?$/;
+const number_regex = /^(([0-9]+.?[0-9]*)|([0-9]*.?[0-9]+))(e[0-9]+)?$/;
 const char_codes = {
     r: '\r',
     t: '\t',
@@ -19,7 +19,7 @@ const quotes_map = {
     ',@': 'unquote-splicing'
 };
 
-class SParser {
+class parser {
     constructor(string) {
         this.input = string;
         this.position = 0;
@@ -58,14 +58,14 @@ class SParser {
         // pop the "
         this.pop();
 
-        return new SString(str);
+        return new string(str);
     }
     atom() {
         if (this.peek() === '"') return this.string();
 
         const atom = this.until(space_quote_paren_escaped_or_end);
         if (atom === '') return false;
-        else return atom.match(number) ? new SNumber(atom) : new SSymbol(atom);
+        else return atom.match(number_regex) ? new number(atom) : new symbol(atom);
     }
     quoted() {
         // pop the quote tag that started it all
@@ -77,7 +77,7 @@ class SParser {
             quote = quotes_map[',@'];
         }
 
-        return new SCons(new SSymbol(quote), new SCons(this.expr(), S.nil));
+        return new cons(new symbol(quote), new cons(this.expr(), S.null));
     }
     expr() {
         // ignore whitespace
@@ -99,15 +99,25 @@ class SParser {
         this.pop();
 
         const list = [];
+        let tail = S.null, panic = false;
         while (this.peek() !== ')') {
-            list.push(this.expr());
+            if (panic) {
+                console.error('ill-formed dot expression; trimming to first tail element');
+                break;
+            }
+            const expr = this.expr();
+            if (expr instanceof symbol && expr.value === '.') {
+                tail = this.expr();
+                panic = true;
+            }
+            else list.push(expr);
         }
 
         // pop the )
         this.pop();
 
         list.reverse();
-        return list.reduce((l, i) => new SCons(i, l), S.nil);
+        return list.reduce((l, i) => new cons(i, l), tail);
     }
 }
 

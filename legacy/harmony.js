@@ -2,6 +2,10 @@
  * Created by joel on 5/30/16.
  */
 
+Array.prototype.to_list = function() {
+    return this.reverse().reduce((list, elem) => new cons(elem, list), S.null);
+};
+
 class object {
     constructor() {
 
@@ -12,7 +16,7 @@ class symbol {
     constructor(value) {
         this.value = value.toLowerCase();
     }
-    to_string() {return "'" + this.value}
+    to_string() {return this.value}
     eq(a) {return S.is_symbol(a) && a.value === this.value}
     eqv(a) {return this.eq(a)}
 }
@@ -31,7 +35,7 @@ class number {
     constructor(value) {
         this.value = +value;
     }
-    to_string() {return this.value}
+    to_string() {return this.value + ''}
     eq(a) {return S.is_number(a) && a.value === this.value}
     eqv(a) {return this.eq(a)}
 }
@@ -52,10 +56,12 @@ class cons {
     }
     eq(a) {return a === this}
     eqv(a) {return S.is_pair(a) && a.car.eqv(this.car) && a.cdr.eqv(this.cdr)}
-    to_string() {
-        return S.is_pair(this.cdr) ?
-            `(${this.car.to_string()} ${this.cdr.to_string().substring(1)})`:
-            `(${this.car.to_string()} . ${this.cdr.to_string()})`
+    to_string(open) {
+        let string = this.car.to_string();
+        if (S.is_pair(this.cdr)) string += ' ' + this.cdr.to_string(true);
+        else if (!S.is_null(this.cdr)) string += ' . ' + this.cdr.to_string();
+        if (!open) string = `(${string})`;
+        return string;
     }
     to_array() {
         const array = [];
@@ -64,7 +70,11 @@ class cons {
     }
     get length() {return 1 + this.cdr.length}
 
-    map(f) { return new cons(f(this.car), S.is_pair(this.cdr) ? this.cdr.map(f) : S.null) }
+    map(f) { return new cons(f(this.car, this), S.is_pair(this.cdr) ? this.cdr.map(f) : S.null) }
+    fold(f, init) {
+        this.for_each(car => init = f(init, car));
+        return init;
+    }
     reduce(init, f) {
         for (let pair = this; S.is_pair(pair); pair = pair.cdr) init = f(init, pair.car);
         return init;
@@ -77,6 +87,7 @@ class environment {
         this.bindings = bindings;
         this.parent = parent;
     }
+    to_string() {return "\<environment\>"}
     eq(a) { return a === this }
     eqv(a) { return a === this }
     lookup(symbol) {
@@ -98,6 +109,7 @@ class procedure {
         this.body = body;
         this.environment = env;
     }
+    to_string() {return "\<procedure\>"}
     default_bindings() {
         return {};
     }
@@ -144,7 +156,9 @@ const S = {
         to_string: () => "'()",
         eq: a => a === this,
         eqv: a => a === this,
-        cdr: this
+        cdr: this,
+        map(f) {return this.null},
+        fold(f, init) {return init}
     },
     unspecified: {
         to_string: () => '\<unspecified\>',
@@ -153,12 +167,12 @@ const S = {
     },
     true: new boolean('t', true),
     false: new boolean('f', false),
-    is_true: a => !this.false.is_eq(a),
-    is_false: a => this.false.is_eq(a),
-    bool: b => b ? this.true : this.false,
+    is_true(a) {return !this.false.eq(a)},
+    is_false(a) {return this.false.eq(a)},
+    bool(p) {return p ? this.true : this.false},
 
-    is_null: a => a === this.null,
-    is_unspecified: a => a === this.unspecified,
+    is_null(a) {return a === this.null},
+    is_unspecified(a) {return a === this.unspecified},
     is_symbol: a => a instanceof symbol,
     is_boolean: a => a instanceof boolean,
     is_number: a => a instanceof number,
@@ -182,30 +196,73 @@ const S = {
     map(f, lists) {
         const cars = lists.map(a => a.car);
         const cdrs = lists.map(a => a.cdr);
-        const elem = f.apply(cars);
-        if (this.every(cdr => this.is_pair(cdr)))
+        const elem = f(cars);
+        if (this.every(cdr => this.is_pair(cdr), cdrs))
             return new cons(elem, this.map(f, cdrs));
         return new cons(elem, this.null);
     },
-
+    fold(f, init, lists) {
+        const cars = lists.map(a => a.car);
+        const cdrs = lists.map(a => a.cdr);
+        const elem = f(new cons(init, cars));
+        if (this.every(cdr => this.is_pair(cdr), cdrs))
+            return this.fold(f, elem, cdrs);
+        return elem;
+    },
     zip(lists) {
-
+        return this.map(args => args, lists);
     },
 
     eval(exp, env) {
         if (this.is_pair(exp)) {
             const f = exp.car, args = exp.cdr;
-            let bindings, body, let_env, result;
+            let bindings, body, let_env, result, name;
             if (this.is_symbol(f)) switch (f.value) {
+                case 'quote':
+                    return args.car;
+                case 'quasiquote':
+                    if (this.is_pair(args.car)) {
+
+                        return args.car.map(exp => {
+                            if (this.is_pair(exp) && this.is_symbol(exp.car)) {
+                                switch (exp.car.value) {
+                                    case 'quote':
+                                        return exp.cdr.car;
+                                    case 'quasiquote':
+                                        return exp.cdr.car;
+                                    case 'unquote':
+                                        return this.eval(exp.cdr.car, env);
+                                    case 'unquote-splicing':
+                                        // TODO: do this right
+                                        return this.eval(exp.cdr.car, env);
+                                    default:
+                                        return exp;
+                                }
+                            }
+                            return exp;
+                        });
+                    }
+                    else return args.car;
+                case 'unquote':
+                    return this.eval(args.car, env, false);
                 case 'lambda':
                     return new procedure(args.car, args.cdr, env);
                 case 'let':
-                    bindings = args.car;
-                    body = args.cdr;
-                    let_env = new environment({}, env);
-                    bindings.for_each(binding =>
-                        let_env.bind(binding.car, this.eval(binding.cdr.car, env)));
-                    return body.reduce(this.unspecified, (pre, exp) => this.eval(exp, let_env));
+                    if (this.is_pair(args.car)) {
+                        let_env = new environment({}, env);
+                        bindings = args.car;
+                        body = args.cdr;
+                        bindings.for_each(binding =>
+                            let_env.bind(binding.car, this.eval(binding.cdr.car, env)));
+                        return body.reduce(this.unspecified, (pre, exp) => this.eval(exp, let_env));
+                    }
+                    else if (this.is_symbol(args.car)) {
+                        name = args.car;
+                        bindings = args.cdr.car;
+                        body = args.cdr.cdr;
+                        let let_procedure = new named_procedure(name, bindings.map(binding => binding.car), body, env);
+                        return let_procedure.apply(bindings.map(binding => this.eval(binding.cdr.car, env)));
+                    } else return console.error('ill-formed let');
                 case 'let*':
                     bindings = args.car;
                     body = args.cdr;
@@ -214,7 +271,14 @@ const S = {
                         let_env.bind(binding,car, this.eval(binding.cdr.car, let_env)));
                     return body.reduce(this.unspecified, (pre, exp) => this.eval(exp, let_env));
                 case 'define':
-                    return env.bind(args.car, args.cdr.car);
+                    if (this.is_symbol(args.car)) return env.bind(args.car, args.cdr.car);
+                    else if (this.is_pair(args.car)) {
+                        const name = args.car.car;
+                        const params = args.car.cdr;
+                        const body = args.cdr;
+                        return env.bind(name, new named_procedure(name, params, body, env));
+                    }
+                    else return console.error('ill-formed definition');
                 case 'set!':
                     return env.bind(args.car, this.eval(args.cdr.car, env));
                 case 'if':
@@ -246,6 +310,7 @@ const S = {
 };
 
 const top_level_bindings = {
+    // pairs
     car: new primitive_procedure(args => args.car.car),
     cdr: new primitive_procedure(args => args.car.cdr),
     cons: new primitive_procedure(args => new cons(args.car, args.cdr.car)),
@@ -259,31 +324,71 @@ const top_level_bindings = {
         return S.unspecified;
     }),
 
+    // lists
+    every: new primitive_procedure(args => S.bool(S.every(arg => S.is_true(arg), args))),
+    any: new primitive_procedure(args => S.bool(S.any(arg => S.is_true(arg), args))),
     map: new primitive_procedure(args => {
         const f = args.car;
         const lists = args.cdr;
-        return S.map()
+        return S.map(elems => f.apply(elems), lists);
+    }),
+    fold: new primitive_procedure(args => {
+        const f = args.car;
+        const init = args.cdr.car;
+        const lists = args.cdr.cdr;
+        return S.fold(elems => f.apply(elems), init, lists);
+    }),
+    zip: new primitive_procedure(args => S.zip(args)),
+    sort: new primitive_procedure(args => {
+        const list = args.car;
+        const f = args.cdr.car;
+        const array = list.to_array();
+        array.sort((a, b) => S.is_true(f.apply(new cons(a, new cons(b, S.null)))));
+        return array.to_list();
     }),
 
+    // equality
     'eq?': new primitive_procedure(args => S.bool(args.car.eq(args.cdr.car))),
     'eqv?': new primitive_procedure(args => S.bool(args.car.eqv(args.cdr.car))),
     'equal?': new primitive_procedure(args => S.bool(args.car.to_string() === args.cdr.car.to_string())),
+    '=': new primitive_procedure(args => S.bool(args.car.value === args.cdr.car.value)),
 
-    'null?': new primitive_procedure(args => S.bool(S.is_null(args.car))),
-    'unspecified?': new primitive_procedure(args => S.bool(S.is_unspecified(args.car))),
-    'symbol?': new primitive_procedure(args => S.bool(S.is_symbol(args.car))),
-    'boolean?': new primitive_procedure(args => S.bool(S.is_boolean(args.car))),
-    'number?': new primitive_procedure(args => S.bool(S.is_number(args.car))),
-    'string?': new primitive_procedure(args => S.bool(S.is_string(args.car))),
-    'pair?': new primitive_procedure(args => S.bool(S.is_pair(args.car))),
-    'environment?': new primitive_procedure(args => S.bool(S.is_environment(args.car))),
-    'procedure?': new primitive_procedure(args => S.bool(S.is_procedure(args.car))),
-    'primitive-procedure?': new primitive_procedure(args => S.bool(S.is_primitive_procedure(args.car))),
-    'named-procedure?': new primitive_procedure(args => S.bool(S.is_named_procedure(args.car))),
+    // numbers
+    '+': new primitive_procedure(args => new number(args.fold((sum, arg) => sum + arg.value, 0))),
+    '-': new primitive_procedure(args => new number(args.car.value - args.cdr.car.value)),
+    '*': new primitive_procedure(args => new number(args.fold((product, arg) => product * arg.value, 1))),
+    '/': new primitive_procedure(args => new number(args.car.value / args.cdr.car.value)),
 
+    '>': new primitive_procedure(args => S.bool(args.car.value > args.cdr.car.value)),
+    '>=': new primitive_procedure(args => S.bool(args.car.value >= args.cdr.car.value)),
+    '<': new primitive_procedure(args => S.bool(args.car.value < args.cdr.car.value)),
+    '<=': new primitive_procedure(args => S.bool(args.car.value <= args.cdr.car.value)),
+    square: new primitive_procedure(args => new number(args.car.value * args.car.value)),
 
+    // printing
+    display: new primitive_procedure(args => {
+        console.log(args.car.to_string());
+        write(args.car.to_string());
+        return S.unspecified;
+    })
 };
 
+// identities
+[
+    'null',
+    'unspecified',
+    'symbol',
+    'boolean',
+    'number',
+    'string',
+    'pair',
+    'environment',
+    'procedure',
+    'primitive-procedure',
+    'named-procedure'
+].forEach(f => top_level_bindings[f + '?'] = new primitive_procedure(args => S.bool(S['is_' + f](args.car))));
+
+// maths
 [
     'sin',
     'cos',
@@ -294,10 +399,13 @@ const top_level_bindings = {
     'exp',
     'log',
     'abs',
-    'pow'
+    'pow',
+    'sqrt'
 ].forEach(f => top_level_bindings[f] = make_primitive_procedure(Math[f], number));
 
-//(top_level_bindings);
+
+
+// insert top_level_bindings;
 Object.keys(top_level_bindings).forEach(key => {
     top_level_environment.bindings[key] = top_level_bindings[key];
 });

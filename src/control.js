@@ -1,13 +1,13 @@
 /**
- * Created by joel on 5/28/16.
+ * Created by joelgustafson on 6/4/16.
  */
 
 function getWidth() {
-    return 2 * window.innerWidth / 3.0 - 10;
+    return 2 * window.innerWidth / 3.0;
 }
 
 function getHeight() {
-    return window.innerHeight - 10;
+    return window.innerHeight;
 }
 
 function attachListeners(element) {
@@ -35,7 +35,7 @@ function down(x, y) {
     MOUSE.y = getMouseY(y);
     SCENE.raycaster.setFromCamera(MOUSE, SCENE.camera);
 
-    const intersects = SCENE.raycaster.intersectObjects(SCENE.meshes.GRASPObject || []);
+    const intersects = SCENE.raycaster.intersectObjects(SCENE.meshes.SObject || []);
     for (let i = 0; i < intersects.length; i++) {
         let intersect = intersects[i].object.object;
         if (intersect.type == 'Scope' || intersect.type == 'Variable' || intersect.type == 'Form') {
@@ -90,7 +90,7 @@ function move(x, y) {
 function up() {
     if (DRAG_OBJECT) DRAG_OBJECT.drag_coordinates = null;
     DRAG_OBJECT = null;
-    SCENE.controls.enabled = true;
+    // SCENE.controls.enabled = true;
     SCENE.container.style.cursor = 'default';
 }
 

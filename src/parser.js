@@ -1,3 +1,7 @@
+/**
+ * Created by joelgustafson on 6/4/16.
+ */
+
 
 const not_whitespace_or_end = /^(\S|$)/;
 const space_quote_paren_escaped_or_end = /^(\s|\\|"|'|`|,|\(|\)|$)/;
@@ -99,15 +103,25 @@ class parser {
         this.pop();
 
         const list = [];
+        let tail = S.null, panic = false;
         while (this.peek() !== ')') {
-            list.push(this.expr());
+            if (panic) {
+                console.error('ill-formed dot expression; trimming to first tail element');
+                break;
+            }
+            const expr = this.expr();
+            if (expr instanceof symbol && expr.value === '.') {
+                tail = this.expr();
+                panic = true;
+            }
+            else list.push(expr);
         }
 
         // pop the )
         this.pop();
 
         list.reverse();
-        return list.reduce((l, i) => new cons(i, l), S.null);
+        return list.reduce((l, i) => new cons(i, l), tail);
     }
 }
 

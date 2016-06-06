@@ -1,4 +1,6 @@
-"use strict";
+/**
+ * Created by joelgustafson on 6/4/16.
+ */
 
 const MOUSE = new THREE.Vector3(0, 0, 0), OFFSET = new THREE.Vector2(0, 0);
 const LEVEL_SPACING = 256, ARG_ELEVATION = 1, ARG_SPACING = 20, INPUT_RADIUS = 5, OUTPUT_RADIUS = 5;
@@ -7,7 +9,6 @@ let DRAG_OBJECT;
 // const LABELS = document.getElementById('labels').checked;
 const LABELS = true;
 
-
 const COLORS = {
     green: 0x119955,
     white: 0xffffff,
@@ -15,7 +16,7 @@ const COLORS = {
     highlight: 0xffff00
 };
 
-class GRASPObject {
+class SObject {
     constructor(geometry, material) {
         this.local_index = null;
         this.meshes = {};
@@ -48,21 +49,21 @@ class GRASPObject {
                 else mesh.object.meshes[type] = [object.mesh];
             });
         }
-        object.mesh.traverseAncestors(mesh => {
-            for (let type in object.meshes) if (object.meshes.hasOwnProperty(type)) {
+        object.mesh.traverseAncestors(mesh =>
+            Object.keys(object.meshes).forEach(type => {
                 //if (mesh.object.meshes[type]) mesh.object.meshes[type] = [...object.meshes[type]];
                 if (mesh.object.meshes[type])
                     mesh.object.meshes[type] = mesh.object.meshes[type].concat(object.meshes[type]);
                 else
                     mesh.object.meshes[type] = object.meshes[type].slice();
-            }
-        });
+            })
+        );
         return object;
     }
     remove() {
         // remove children
-        for (let type in this.children) if (this.children.hasOwnProperty(type))
-            this.children[type].forEach(object => object.remove());
+        Object.keys(this.children).forEach(type =>
+            this.children[type].forEach(object => object.remove()));
         for (let proto = this.__proto__; proto; proto = proto.__proto__) {
             const type = proto.constructor.name;
             // update parent's .children[type] list
@@ -96,7 +97,7 @@ class GRASPObject {
     get type() {return this.constructor.name; }
 }
 
-class Scene extends GRASPObject {
+class Scene extends SObject {
     constructor() {
         super();
         //this.type = 'Scene';
@@ -114,10 +115,6 @@ class Scene extends GRASPObject {
         this.camera = new THREE.PerspectiveCamera(60, this.width / this.height, 50, 10000);
         this.camera.position.z = 500;
 
-        this.controls = new THREE.TrackballControls(this.camera);
-        this.controls.noZoom = false;
-        this.controls.noPan = false;
-
         this.raycaster = new THREE.Raycaster();
 
         let scene = this;
@@ -133,21 +130,19 @@ class Scene extends GRASPObject {
 
         attachListeners(this.container);
 
-
         // light
         let light = new THREE.DirectionalLight(0xffffff, 1);
         light.position.set(0.2, 0.2, 1);
         light.castShadow = true;
-        light.shadowMapWidth = 2048;
-        light.shadowMapHeight = 2048;
+        light.shadow.mapSize.width = 2048;
+        light.shadow.mapSize.height = 2048;
         let d = 50;
-        light.shadowCameraLeft = -d;
-        light.shadowCameraRight = d;
-        light.shadowCameraTop = d;
-        light.shadowCameraBottom = -d;
-        light.shadowCameraFar = 3500;
-        light.shadowBias = -0.0001;
-        light.shadowDarkness = 1;
+        light.shadow.camera.left = -d;
+        light.shadow.camera.right = d;
+        light.shadow.camera.top = d;
+        light.shadow.camera.bottom = -d;
+        light.shadow.camera.far = 3500;
+        light.shadow.bias = -0.0001;
         this.mesh.add(light);
         return this;
     }
@@ -172,7 +167,7 @@ class Scene extends GRASPObject {
     }
 }
 
-class Plane extends GRASPObject {
+class Plane extends SObject {
     constructor(width, height) {
         width = width || 1000;
         height = height || 1000;
@@ -211,7 +206,7 @@ class Plane extends GRASPObject {
     }
 }
 
-class Scope extends GRASPObject {
+class Scope extends Plane {
     constructor(level, width, height) {
         level = level || 0;
         width = width || 200;
@@ -303,7 +298,7 @@ class Scope extends GRASPObject {
     }
 }
 
-class Node extends GRASPObject {
+class Node extends SObject {
     constructor() {
         const width = 20;
         const height = 25;
@@ -454,7 +449,7 @@ class Variable extends Node {
     }
 }
 
-class Edge extends GRASPObject {
+class Edge extends SObject {
     constructor(start, end, color) {
         color = color || COLORS.green;
         const getCurve = THREE.Curve.create(function () { }, t => new THREE.Vector3(0, t, 0));
@@ -504,7 +499,7 @@ class Edge extends GRASPObject {
     }
 }
 
-class Arg extends GRASPObject {
+class Arg extends SObject {
     constructor(radius) {
         const geometry = new THREE.SphereGeometry(radius);
         const material = new THREE.MeshPhongMaterial({shading: THREE.FlatShading});
@@ -546,7 +541,7 @@ class Output extends Arg {
     }
 }
 
-class Label extends GRASPObject {
+class Label extends SObject {
     constructor(name, height) {
         const text = new Text(name, height - 2, 4.2);
 
@@ -574,12 +569,16 @@ class Label extends GRASPObject {
     }
 }
 
-class Text extends GRASPObject {
+class Text extends SObject {
     constructor(text, size, height) {
         text = text || ' ';
         size = size || 10;
         height = height || 6;
-        const geometry = new THREE.TextGeometry(text, {font: "droid sans mono", height: height, size: size, style: "normal"});
+        const geometry = new THREE.TextGeometry(text, {
+            font: droid_sans_mono,
+            height: height,
+            size: size
+        });
         geometry.computeBoundingBox();
         const width = geometry.boundingBox.max.x - geometry.boundingBox.min.x;
         geometry.applyMatrix(new THREE.Matrix4().makeTranslation(- width / 2, - size / 2, 0));
@@ -594,10 +593,11 @@ class Text extends GRASPObject {
     }
 }
 
+
 function render() {
     updateForces();
     requestAnimationFrame(render);
-    SCENE.controls.update();
+    // SCENE.controls.update();
     SCENE.renderer.render(SCENE.mesh, SCENE.camera);
 }
 
@@ -605,5 +605,3 @@ const SCENE = new Scene();
 
 render();
 
-let PLANE = SCENE.add(new Plane());
-let SCOPE = PLANE.add(new Scope(0));
