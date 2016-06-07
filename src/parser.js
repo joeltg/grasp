@@ -69,7 +69,13 @@ class parser {
 
         const atom = this.until(space_quote_paren_escaped_or_end);
         if (atom === '') return false;
-        else return atom.match(number_regex) ? new number(atom) : new symbol(atom);
+        else return atom.match(number_regex) ?
+            new number(atom) :
+            atom === '#t' ?
+                S.true :
+                atom === '#f' ?
+                    S.false :
+                    new symbol(atom);
     }
     quoted() {
         // pop the quote tag that started it all
@@ -80,7 +86,6 @@ class parser {
             this.pop();
             quote = quotes_map[',@'];
         }
-
         return new cons(new symbol(quote), new cons(this.expr(), S.null));
     }
     expr() {

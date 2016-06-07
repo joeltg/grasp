@@ -64,7 +64,7 @@ function evaluate_editor() {
     // write(value + '\n');
     var p = new parser(value);
     for (let exp = p.expr(); exp; exp = p.expr()) {
-        write(exp.to_string() + '\n' + S.eval(exp, top_level_environment).to_string() + '\n=> ');
+        write(exp.to_string() + '\n' + S.eval(exp, top_level_environment).to_string() + '\n]=> ');
     }
 }
 
@@ -80,7 +80,7 @@ function evaluate_repl() {
     write('\n');
     for (let exp = p.expr(); exp; exp = p.expr())
         write(S.eval(exp, top_level_environment).to_string() + '\n');
-    write('\n=> ');
+    write('\n]=> ');
 }
 
 // set handlers for key events
@@ -100,4 +100,4 @@ repl.setOption('extraKeys', {
     "Cmd-S": null
 });
 
-write('=> ');
+write(']=> ');

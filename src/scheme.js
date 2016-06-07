@@ -70,6 +70,9 @@ class cons {
         return init;
     }
     for_each(f) { for (let pair = this; S.is_pair(pair); pair = pair.cdr) f(pair.car) }
+    makeObject() {
+        return new Label(this.to_string(), 12);
+    }
 }
 
 class environment {
@@ -114,7 +117,7 @@ class procedure {
         if (S.is_symbol(params_pair)) bindings[params_pair] = args_pair;
 
         const env = new environment(bindings, this.environment);
-        return this.body(env);
+        return this.body.evaluate(env);
     }
     eq(a) { return a === this }
     eqv(a) { return a === this }
@@ -136,6 +139,16 @@ class primitive_procedure extends procedure {
     constructor(f) {
         super(null, null, top_level_environment);
         this.apply = args => f(args, this.environment);
+    }
+}
+
+class analysis {
+    constructor(object, evaluator) {
+        this.object = object;
+        this.evaluator = evaluator;
+    }
+    evaluate(env) {
+        return this.evaluator(env);
     }
 }
 
@@ -206,36 +219,52 @@ const S = {
     zip(lists) {
         return this.map(args => args, lists);
     },
-
-    eval2(exp, env) {
-        return this.analyze(exp)(env);
+    eval(exp, env) {
+        const a = this.analyze(exp);
+        SCOPE.add(a.object);
+        return a.evaluate(env);
     },
     analyze_sequence(sequence) {
         const analyzed_sequence = sequence.map(exp => this.analyze(exp));
-        return env => analyzed_sequence.reduce(S.unspecified, (prev, exp) => exp(env));
+        return new analysis(null, env =>
+            analyzed_sequence.reduce(S.unspecified, (prev, exp) => exp.evaluate(env)));
     },
     analyze(exp) {
         if (this.is_pair(exp)) {
             const f = exp.car, args = exp.cdr;
-            let body, params, bindings, values, name, value;
+            let body, params, bindings, values, name, value, quote;
             if (this.is_symbol(f)) switch (f.value) {
                 case 'quote':
-                    const quote = args.car;
-                    return env => quote;
+                    quote = args.car;
+                    return new analysis(quote.makeObject(), env => quote);
                 case 'quasiquote':
-
-                    break;
+                    quote = args.car;
+                    if (this.is_pair(quote)) {
+                        value = quote.map(elem => {
+                            if (this.is_pair(elem) && this.is_symbol(elem.car) && elem.car.value === 'unquote')
+                                return new analysis(null, this.analyze(elem.cdr.car));
+                            return new analysis(null, env => elem);
+                        });
+                        return new analysis(null, env => values.map(a => a.evaluate(env)));
+                    }
+                    else return new analysis(null, env => quote);
                 case 'lambda':
                     params = args.car;
                     body = this.analyze_sequence(args.cdr);
-                    return env => new procedure(params, body, env);
+                    return new analysis(null, env => new procedure(params, body, env));
+                case 'named-lambda':
+                    name = args.car;
+                    params = args.cdr.car;
+                    body = this.analyze_sequence(args.cdr.cdr);
+                    return new analysis(null, env => new named_procedure(name, params, body, env));
                 case 'let':
                     if (this.is_pair(args.car)) {
                         bindings = args.car;
                         body = this.analyze_sequence(args.cdr);
                         params = bindings.map(binding => binding.car);
                         values = bindings.map(binding => this.analyze(binding.cdr.car));
-                        return env => (new procedure(params, body, env)).apply(values.map(value => value(env)));
+                        return new analysis(null, env =>
+                            (new procedure(params, body, env)).apply(values.map(v => v.evaluate(env))));
                     }
                     else if (this.is_symbol(args.car)) {
                         name = args.car;
@@ -243,8 +272,8 @@ const S = {
                         body = this.analyze_sequence(args.cdr.cdr);
                         params = bindings.map(binding => binding.car);
                         values = bindings.map(binding => this.analyze(binding.cdr.car));
-                        return env =>
-                            (new named_procedure(name, params, body, env)).apply(values.map(value => value(env)));
+                        return new analysis(null, env =>
+                            (new named_procedure(name, params, body, env)).apply(values.map(v => v.evaluate(env))));
                     }
                     else return console.error('ill-formed let');
                 case 'define':
@@ -253,148 +282,56 @@ const S = {
                         name = args.car.car;
                         params = args.car.cdr;
                         body = this.analyze_sequence(args.cdr);
-                        return env => new named_procedure(name, params, body, env);
+                        return new analysis(null, env => env.bind(name, new named_procedure(name, params, body, env)));
                     }
                     else if (this.is_symbol(args.car)) {
                         // variable binding
                         value = this.analyze(args.cdr.car);
-                        return env => env.bind(args.car, value);
+                        return new analysis(null, env => env.bind(args.car, valu.evaluate(env)));
                     }
                     else return console.error('ill-formed definition');
                 case 'set!':
                     value = this.analyze(args.cdr.car);
-                    return env => env.bind(args.car, value);
+                    return new analysis(null, env => env.bind(args.car, value.evaluate(env)));
                 case 'if':
                     const predicate = this.analyze(args.car);
                     const consequent = this.analyze(args.cdr.car);
                     const alternative = this.analyze(args.cdr.cdr.car);
-                    return env => this.is_true(predicate(env)) ? consequent(env) : alternative(env);
+                    return new analysis(null, env =>
+                        this.is_true(predicate.evaluate(env)) ? consequent.evaluate(env) : alternative.evaluate(env));
                 case 'and':
                     values = args.map(arg => this.analyze(arg));
-                    return env => {
+                    return new analysis(null, env => {
                         for (let pair = values; this.is_pair(pair); pair = pair.cdr) {
-                            value = pair.car(env);
+                            value = pair.car.evaluate(env);
                             if (this.is_false(value)) return this.false;
                         }
                         return value;
-                    };
+                    });
                 case 'or':
                     values = args.map(arg => this.analyze(arg));
-                    return env => {
+                    return new analysis(null, env => {
                         for (let pair = values; this.is_pair(pair); pair = pair.cdr) {
-                            value = pair.car(env);
+                            value = pair.car.evaluate(env);
                             if (this.is_true(value)) return value;
                         }
                         return this.false;
-                    };
+                    });
                 default:
                     break;
             }
             // f is either a symbol bound in env, or an expression yet to be evaluated
             const analyzed_f = this.analyze(f);
             const analyzed_args = args.map(arg => this.analyze(arg));
-            return env => analyzed_f(env).apply(analyzed_args.map(arg => arg(env)));
+            return new analysis(null, env =>
+                analyzed_f.evaluate(env).apply(analyzed_args.map(arg => arg.evaluate(env))));
         }
         else if (this.is_symbol(exp)) {
             // binding lookup
-            return env => env.lookup(exp);
+            return new analysis(null, env => env.lookup(exp));
         }
-        else {
-            // self-evaluating
-            return env => exp;
-        }
-    },
-    eval(exp, env) {
-        if (this.is_pair(exp)) {
-            const f = exp.car, args = exp.cdr;
-            let bindings, body, let_env, result, name;
-            if (this.is_symbol(f)) switch (f.value) {
-                case 'quote':
-                    return args.car;
-                case 'quasiquote':
-                    if (this.is_pair(args.car)) {
-
-                        return args.car.map(exp => {
-                            if (this.is_pair(exp) && this.is_symbol(exp.car)) {
-                                switch (exp.car.value) {
-                                    case 'quote':
-                                        return exp.cdr.car;
-                                    case 'quasiquote':
-                                        return exp.cdr.car;
-                                    case 'unquote':
-                                        return this.eval(exp.cdr.car, env);
-                                    case 'unquote-splicing':
-                                        // TODO: do this right
-                                        return this.eval(exp.cdr.car, env);
-                                    default:
-                                        return exp;
-                                }
-                            }
-                            return exp;
-                        });
-                    }
-                    else return args.car;
-                case 'unquote':
-                    return this.eval(args.car, env, false);
-                case 'lambda':
-                    return new procedure(args.car, args.cdr, env);
-                case 'let':
-                    if (this.is_pair(args.car)) {
-                        let_env = new environment({}, env);
-                        bindings = args.car;
-                        body = args.cdr;
-                        bindings.for_each(binding =>
-                            let_env.bind(binding.car, this.eval(binding.cdr.car, env)));
-                        return body.reduce(this.unspecified, (pre, exp) => this.eval(exp, let_env));
-                    }
-                    else if (this.is_symbol(args.car)) {
-                        name = args.car;
-                        bindings = args.cdr.car;
-                        body = args.cdr.cdr;
-                        let let_procedure = new named_procedure(name, bindings.map(binding => binding.car), body, env);
-                        return let_procedure.apply(bindings.map(binding => this.eval(binding.cdr.car, env)));
-                    } else return console.error('ill-formed let');
-                case 'let*':
-                    bindings = args.car;
-                    body = args.cdr;
-                    let_env = new environment({}, env);
-                    bindings.for_each(binding =>
-                        let_env.bind(binding,car, this.eval(binding.cdr.car, let_env)));
-                    return body.reduce(this.unspecified, (pre, exp) => this.eval(exp, let_env));
-                case 'define':
-                    if (this.is_symbol(args.car)) return env.bind(args.car, args.cdr.car);
-                    else if (this.is_pair(args.car)) {
-                        const name = args.car.car;
-                        const params = args.car.cdr;
-                        const body = args.cdr;
-                        return env.bind(name, new named_procedure(name, params, body, env));
-                    }
-                    else return console.error('ill-formed definition');
-                case 'set!':
-                    return env.bind(args.car, this.eval(args.cdr.car, env));
-                case 'if':
-                    return this.is_true(this.eval(args.car, env)) ?
-                        this.eval(args.cdr.car, env) :
-                        this.eval(args.cdr.cdr.car, env);
-                case 'and':
-                    for (let pair = args; this.is_pair(pair); pair = pair.cdr) {
-                        result = this.eval(pair.car, env);
-                        if (this.is_false(result)) return this.false;
-                    }
-                    return result;
-                case 'or':
-                    for (let pair = args; this.is_pair(pair); pair = pair.cdr) {
-                        result = this.eval(pair.car, env);
-                        if (this.is_true(result)) return result;
-                    }
-                    return this.false;
-                default:
-                    break;
-            }
-            return this.eval(f, env).apply(args.map(arg => this.eval(arg, env)));
-        }
-        else if (this.is_symbol(exp)) return env.lookup(exp);
-        else return exp;
+        // self-evaluating
+        return new analysis(new Label(exp.to_string(), 12), env => exp);
     }
 };
 
@@ -441,7 +378,8 @@ const top_level_bindings = {
     'eqv?': new primitive_procedure(args => S.bool(args.car.eqv(args.cdr.car))),
     'equal?': new primitive_procedure(args => S.bool(args.car.to_string() === args.cdr.car.to_string())),
     '=': new primitive_procedure(args => S.bool(args.car.value === args.cdr.car.value)),
-    'not': new primitive_procedure(args => S.bool(S.is_false(args.car))),
+    not: new primitive_procedure(args => S.bool(S.is_false(args.car))),
+    '!=': this.not,
 
     // numbers
     '+': new primitive_procedure(args => new number(args.fold((sum, arg) => sum + arg.value, 0))),
@@ -457,7 +395,6 @@ const top_level_bindings = {
 
     // printing
     display: new primitive_procedure(args => {
-        console.log(args.car.to_string());
         write(args.car.to_string());
         return S.unspecified;
     })
