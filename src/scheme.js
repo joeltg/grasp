@@ -9,6 +9,11 @@ class symbol {
     to_string() {return this.value}
     eq(a) {return S.is_symbol(a) && a.value === this.value}
     eqv(a) {return this.eq(a)}
+    makeObject(env) {
+        this.object = new atom(this.to_string());
+        env.object.mesh.add(this.object.mesh);
+        return this.object;
+    }
 }
 
 class boolean {
@@ -19,6 +24,11 @@ class boolean {
     to_string() {return '#' + this.name}
     eq(a) {return S.is_boolean(a) && a.value === this.value}
     eqv(a) {return this.eq(a)}
+    makeObject(env) {
+        this.object = new atom(this.to_string());
+        env.object.mesh.add(this.object.mesh);
+        return this.object;
+    }
 }
 
 class number {
@@ -28,6 +38,11 @@ class number {
     to_string() {return this.value + ''}
     eq(a) {return S.is_number(a) && a.value === this.value}
     eqv(a) {return this.eq(a)}
+    makeObject(env) {
+        this.object = new atom(this.to_string());
+        env.object.mesh.add(this.object.mesh);
+        return this.object;
+    }
 }
 
 class string {
@@ -37,6 +52,11 @@ class string {
     to_string() {return `"${this.value}"`}
     eq(a) {return a === this}
     eqv(a) {return S.is_string(a) && a.value === this.value}
+    makeObject(env) {
+        this.object = new atom(this.to_string());
+        env.object.mesh.add(this.object.mesh);
+        return this.object;
+    }
 }
 
 class cons {
@@ -70,8 +90,10 @@ class cons {
         return init;
     }
     for_each(f) { for (let pair = this; S.is_pair(pair); pair = pair.cdr) f(pair.car) }
-    makeObject() {
-        return new Label(this.to_string(), 12);
+    makeObject(env) {
+        this.object = new atom(this.to_string());
+        env.object.mesh.add(this.object.mesh);
+        return this.object;
     }
 }
 
@@ -93,6 +115,11 @@ class environment {
     bind(symbol, value) {
         this.bindings[symbol.value] = value;
         return S.unspecified;
+    }
+    makeObject(env) {
+        this.object = new atom(this.to_string());
+        env.object.mesh.add(this.object.mesh);
+        return this.object;
     }
 }
 
@@ -121,6 +148,11 @@ class procedure {
     }
     eq(a) { return a === this }
     eqv(a) { return a === this }
+    makeObject(env) {
+        this.object = new atom(this.to_string());
+        env.object.mesh.add(this.object.mesh);
+        return this.object;
+    }
 }
 
 class named_procedure extends procedure {
@@ -131,6 +163,9 @@ class named_procedure extends procedure {
     default_bindings() {
         return {[this.name]: this}
     }
+    to_string() {
+        return `\<named_procedure ${this.name}\>`
+    }
 }
 
 const top_level_environment = new environment({});
@@ -140,7 +175,11 @@ class primitive_procedure extends procedure {
         super(null, null, top_level_environment);
         this.apply = args => f(args, this.environment);
     }
+    to_string() {
+        return '\<primitive_procedure\>';
+    }
 }
+
 
 class analysis {
     constructor(object, evaluator) {
@@ -221,7 +260,8 @@ const S = {
     },
     eval(exp, env) {
         const a = this.analyze(exp);
-        SCOPE.add(a.object);
+        if (a.object) SCOPE.add(a.object);
+        else (console.error("object not found"));
         return a.evaluate(env);
     },
     analyze_sequence(sequence) {
@@ -236,6 +276,7 @@ const S = {
             if (this.is_symbol(f)) switch (f.value) {
                 case 'quote':
                     quote = args.car;
+                    console.log(quote);
                     return new analysis(quote.makeObject(), env => quote);
                 case 'quasiquote':
                     quote = args.car;
@@ -323,15 +364,19 @@ const S = {
             // f is either a symbol bound in env, or an expression yet to be evaluated
             const analyzed_f = this.analyze(f);
             const analyzed_args = args.map(arg => this.analyze(arg));
-            return new analysis(null, env =>
+            const form = SCOPE.addForm();
+            console.log(analyzed_f);
+            SCENE.addEdge(analyzed_f.object.addOutput(), form.addatom());
+            analyzed_args.for_each(arg => SCENE.addEdge(arg.object.addOutput(), form.addatom()));
+            return new analysis(form, env =>
                 analyzed_f.evaluate(env).apply(analyzed_args.map(arg => arg.evaluate(env))));
         }
         else if (this.is_symbol(exp)) {
             // binding lookup
-            return new analysis(null, env => env.lookup(exp));
+            return new analysis(SCOPE.addVariable(exp.value, true), env => env.lookup(exp));
         }
         // self-evaluating
-        return new analysis(new Label(exp.to_string(), 12), env => exp);
+        return new analysis(exp.makeObject(), env => exp);
     }
 };
 

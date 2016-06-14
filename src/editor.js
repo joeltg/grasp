@@ -36,17 +36,8 @@ repl.setSize(null, window.innerHeight / 2.0);
 var lastLine = 0;
 var lastChar = 0;
 
-function append_to_repl(string) {
+function write(string) {
     repl.replaceRange(string, CodeMirror.Pos(repl.lastLine()));
-    repl.scrollIntoView();
-}
-
-function write(chunk) {
-    append_to_repl(chunk);
-    make_repl_read_only();
-}
-
-function make_repl_read_only() {
     lastLine = repl.lastLine();
     lastChar = repl.getLine(lastLine).length;
 
@@ -55,6 +46,8 @@ function make_repl_read_only() {
         {line: lastLine, ch: lastChar},
         {readOnly: true, inclusiveLeft: true}
     );
+    repl.setCursor({line: lastLine, ch: lastChar});
+    repl.scrollIntoView();
 }
 
 function evaluate_editor() {
@@ -69,15 +62,12 @@ function evaluate_editor() {
 }
 
 function evaluate_repl() {
-    append_to_repl('\n');
     var value = repl.getRange(
         {line: lastLine, ch: lastChar},
         {line: repl.lastLine(), ch: repl.getLine(repl.lastLine()).length}
     );
-    // console.log(value);
-    make_repl_read_only();
     var p = new parser(value);
-    write('\n');
+    write('\n\n');
     for (let exp = p.expr(); exp; exp = p.expr())
         write(S.eval(exp, top_level_environment).to_string() + '\n');
     write('\n]=> ');
